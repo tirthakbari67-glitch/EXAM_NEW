@@ -177,6 +177,7 @@ export default function DashboardPage() {
     
     // 2. LOAD-TEST FIX: Replaced 2 Supabase realtime channels (which create 400 WebSocket
     // connections for 200 users) with lightweight polling every 60 seconds.
+    let jitterTimer: ReturnType<typeof setTimeout> | null = null;
     const pollInterval = setInterval(() => {
       const now = Date.now();
       // Throttle: Don't reload if we just reloaded in the last 30s
@@ -184,7 +185,7 @@ export default function DashboardPage() {
 
       // Add random jitter between 2 and 7 seconds to spread the load
       const jitter = Math.random() * 5000 + 2000;
-      setTimeout(() => {
+      jitterTimer = setTimeout(() => {
         loadExams();
         lastReloadRef.current = Date.now();
       }, jitter);
@@ -192,6 +193,7 @@ export default function DashboardPage() {
 
     return () => { 
       clearTimeout(initialTimer);
+      if (jitterTimer) clearTimeout(jitterTimer);
       clearInterval(pollInterval);
     };
   }, [loadExams]);

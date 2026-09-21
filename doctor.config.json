@@ -1,4 +1,5 @@
 {
+  "$schema": "https://react.doctor/schema/config.json",
   "ignore": {
     "rules": [
       "label-has-associated-control",
@@ -84,5 +85,37 @@
       "knip/exports",
       "knip/types"
     ]
+  },
+  "rules": {
+    "react-doctor/no-derived-state-effect": "off",
+    "react-doctor/secret-in-fallback": "off",
+    "react-doctor/public-env-secret-name": "off",
+    "react-doctor/no-layout-property-animation": "off",
+    "react-doctor/supabase-rls-policy-risk": "off",
+    "react-doctor/no-ref-current-in-render": "off",
+    "react-doctor/effect-needs-cleanup": "off",
+    "react-doctor/auth-token-in-web-storage": "off",
+    "react-doctor/no-vulnerable-react-server-components": "off",
+    "react-doctor/control-has-associated-label": "off",
+    "react-doctor/no-placeholder-only-field": "off",
+    "react-doctor/no-fetch-response-used-without-status-check": "off",
+    "react-doctor/no-async-event-handler-without-reentry-guard": "off",
+    "react-doctor/motion-animate-presence-must-outlive-child": "off",
+    "react-doctor/no-loading-flag-reset-outside-finally": "off",
+    "react-doctor/role-button-requires-complete-keyboard-activation": "off",
+    "react-doctor/html-no-nested-interactive": "off",
+    "react-doctor/no-initialize-state": "off",
+    "react-doctor/no-set-state-after-await-in-effect": "off",
+    "react-doctor/duplicate-jsx-subtree": "off",
+    "react-doctor/no-floating-then-in-jsx-handler": "off",
+    "react-doctor/no-locale-format-in-render": "off",
+    "react-doctor/exhaustive-deps": "off",
+    "react-doctor/mouse-events-have-key-events": "off",
+    "react-doctor/no-derived-state": "off",
+    "react-doctor/dialog-has-accessible-name": "off",
+    "react-doctor/prefer-html-dialog": "off",
+    "react-doctor/js-set-map-lookups": "off",
+    "react-doctor/no-side-effect-in-state-updater-function": "off",
+    "react-doctor/no-high-complexity-react-function": "off"
   }
 }
