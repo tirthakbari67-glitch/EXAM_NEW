@@ -10,7 +10,7 @@ import {
   deleteFacultyStudent,
   resetFacultyStudentExam,
 } from "@/lib/api";
-import { BRANCHES } from "@/lib/constants";
+import { BRANCHES, YEARS } from "@/lib/constants";
 import styles from "@/app/admin/admin.module.css"; // Reuse admin styles
 
 interface Props {
@@ -22,11 +22,12 @@ export default function FacultyStudentsTab({ branches }: Props) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [examFilter, setExamFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("All");
 
   // Modals
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<AdminStudent | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", usn: "", email: "", branch: "CS", password: "" });
+  const [editForm, setEditForm] = useState({ name: "", usn: "", email: "", branch: "CS", year: "1st Year", password: "" });
 
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetStudent, setResetStudent] = useState<AdminStudent | null>(null);
@@ -51,7 +52,7 @@ export default function FacultyStudentsTab({ branches }: Props) {
 
   const handleEdit = (s: AdminStudent) => {
     setEditingStudent(s);
-    setEditForm({ name: s.name, usn: s.usn, email: s.email || "", branch: s.branch || "CS", password: "" });
+    setEditForm({ name: s.name, usn: s.usn, email: s.email || "", branch: s.branch || "CS", year: s.year || "1st Year", password: "" });
     setShowEditModal(true);
   };
 
@@ -63,6 +64,7 @@ export default function FacultyStudentsTab({ branches }: Props) {
         usn: editForm.usn,
         email: editForm.email,
         branch: editForm.branch,
+        year: editForm.year,
         ...(editForm.password ? { password: editForm.password } : {}),
       });
       setShowEditModal(false);
@@ -110,7 +112,7 @@ export default function FacultyStudentsTab({ branches }: Props) {
     if (!confirm(`Allow ${resetStudent.name} to retake "${resetExamName}"? This will clear their answers for this exam.`)) return;
     
     try {
-      await resetFacultyStudentExam(resetStudent.student_id, resetExamName);
+      await resetFacultyStudentExam(resetStudent.student_id, resetExamName.trim());
       setShowResetModal(false);
       loadStudents();
       alert(`Exam "${resetExamName}" reset successfully for ${resetStudent.name}.`);
@@ -120,10 +122,14 @@ export default function FacultyStudentsTab({ branches }: Props) {
   };
 
   const filteredStudents = students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.usn.toLowerCase().includes(search.toLowerCase()) ||
-      (s.email && s.email.toLowerCase().includes(search.toLowerCase()))
+    (s) => {
+      const matchSearch =
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.usn.toLowerCase().includes(search.toLowerCase()) ||
+        (s.email && s.email.toLowerCase().includes(search.toLowerCase()));
+      const matchYear = yearFilter === "All" || (s.year || "1st Year") === yearFilter;
+      return matchSearch && matchYear;
+    }
   );
 
   return (
@@ -131,22 +137,33 @@ export default function FacultyStudentsTab({ branches }: Props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Student Management</h2>
         
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <input
             type="text"
             placeholder="Search students..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-field"
-            style={{ width: 250 }}
+            style={{ width: 220 }}
           />
+          <select
+            className="input-field"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            style={{ width: 130 }}
+          >
+            <option value="All">All Years</option>
+            {YEARS.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
           <input
             type="text"
             placeholder="Filter by Exam Name"
             value={examFilter}
             onChange={(e) => setExamFilter(e.target.value)}
             className="input-field"
-            style={{ width: 200 }}
+            style={{ width: 180 }}
           />
           <button className="btn btn-outline" onClick={loadStudents}>
             Refresh
@@ -164,6 +181,7 @@ export default function FacultyStudentsTab({ branches }: Props) {
                 <th>USN</th>
                 <th>Name</th>
                 <th>Branch</th>
+                <th>Year</th>
                 <th>Status</th>
                 <th>Score</th>
                 <th>Actions</th>
@@ -179,6 +197,11 @@ export default function FacultyStudentsTab({ branches }: Props) {
                   <td>{s.name}</td>
                   <td>
                     <span className={styles.badge}>{s.branch}</span>
+                  </td>
+                  <td>
+                    <span className={styles.badge} style={{ background: "rgba(59, 130, 246, 0.15)", color: "var(--accent)" }}>
+                      {s.year || "1st Year"}
+                    </span>
                   </td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -217,7 +240,7 @@ export default function FacultyStudentsTab({ branches }: Props) {
               ))}
               {filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
+                  <td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
                     No students found.
                   </td>
                 </tr>
@@ -249,6 +272,14 @@ export default function FacultyStudentsTab({ branches }: Props) {
               <select className="input-field" value={editForm.branch} onChange={e => setEditForm({ ...editForm, branch: e.target.value })}>
                 {BRANCHES.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.formGroup}>
+              <label>Year</label>
+              <select className="input-field" value={editForm.year} onChange={e => setEditForm({ ...editForm, year: e.target.value })}>
+                {YEARS.map(y => (
+                  <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>

@@ -90,7 +90,7 @@ async def create_question(request: QuestionCreate, _: bool = Depends(verify_admi
         # ── Dynamic Schema Discovery ──
         probe = db.table("questions").select("*").limit(1).execute()
         db_columns = list(probe.data[0].keys()) if (probe.data and len(probe.data) > 0) else [
-            "text", "options", "branch", "correct_answer", "marks", "order_index", "exam_name"
+            "text", "options", "branch", "year", "correct_answer", "marks", "order_index", "exam_name"
         ]
         full_data = request.model_dump()
         data = {k: v for k, v in full_data.items() if k in db_columns}
@@ -110,7 +110,7 @@ async def update_question(question_id: str, request: QuestionUpdate, _: bool = D
         # ── Dynamic Schema Discovery ──
         probe = db.table("questions").select("*").limit(1).execute()
         db_columns = list(probe.data[0].keys()) if (probe.data and len(probe.data) > 0) else [
-            "text", "options", "branch", "correct_answer", "marks", "order_index", "exam_name"
+            "text", "options", "branch", "year", "correct_answer", "marks", "order_index", "exam_name"
         ]
         full_update_data = {k: v for k, v in request.model_dump().items() if v is not None}
         update_data = {k: v for k, v in full_update_data.items() if k in db_columns}

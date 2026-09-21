@@ -2081,6 +2081,7 @@ function QuestionsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminQuestion | null>(null);
   const [selectedBranch, setSelectedBranch] = useState("All");
+  const [selectedYear, setSelectedYear] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "aptitude" | "programming" | "other">("all");
   const [subCategory, setSubCategory] = useState<"jumble" | "compiler" | "mcq">("compiler");
   const [previewChallenge, setPreviewChallenge] = useState<any>(null);
@@ -2095,6 +2096,7 @@ function QuestionsTab() {
     text: "",
     options: ["", "", "", ""],
     branch: "CS",
+    year: "1st Year",
     correct_answer: "",
     order_index: 0,
     marks: 1,
@@ -2210,6 +2212,7 @@ function QuestionsTab() {
         text: "",
         options: ["", "", "", ""],
         branch: "CS",
+        year: "1st Year",
         correct_answer: subCategory === "compiler" ? "COMPILER" : "",
         order_index: questions.length,
         marks: subCategory === "compiler" ? 10 : 1,
@@ -2235,6 +2238,7 @@ function QuestionsTab() {
         text: "",
         options: ["", "", "", ""],
         branch: "CS",
+        year: "1st Year",
         correct_answer: "",
         order_index: questions.length,
         marks: 1,
@@ -2253,6 +2257,7 @@ function QuestionsTab() {
     const type = q.programming_type || "compiler";
     setFormData({
       ...q,
+      year: (q as any).year || "1st Year",
       programming_type: type
     });
 
@@ -2544,6 +2549,7 @@ function QuestionsTab() {
 
   const filteredQuestions = questions.filter((q) => {
     const branchMatch = selectedBranch === "All" || q.branch === selectedBranch;
+    const yearMatch = selectedYear === "All" || (q as any).year === selectedYear;
     let categoryMatch = selectedCategory === "all" || getQCategory(q) === selectedCategory;
 
     if (categoryMatch && selectedCategory === "programming") {
@@ -2551,7 +2557,7 @@ function QuestionsTab() {
       if (type !== subCategory) categoryMatch = false;
     }
 
-    if (selectedStatus === "all") return branchMatch && categoryMatch;
+    if (selectedStatus === "all") return branchMatch && yearMatch && categoryMatch;
 
     const conf = configs.find((c: any) => c.exam_title === q.exam_name);
     const now = Date.now();
@@ -2569,7 +2575,7 @@ function QuestionsTab() {
       statusMatch = (conf?.is_active === false) || (end < now);
     }
 
-    return branchMatch && categoryMatch && statusMatch;
+    return branchMatch && yearMatch && categoryMatch && statusMatch;
   });
 
 
@@ -2648,6 +2654,11 @@ function QuestionsTab() {
             value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
             <option value="All">All Branches</option>
             {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <select className={adminStyles.input} style={{ width: 130, height: 36, padding: "0 8px", fontSize: 13 }}
+            value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+            <option value="All">All Years</option>
+            {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
         <button className="btn btn-primary" onClick={handleAddNewQuestionClick}>
@@ -3010,8 +3021,9 @@ function QuestionsTab() {
                                 </div>
                               )}
                               <p className={adminStyles.cardText} style={{ fontSize: 14 }}>{q.text}</p>
-                              <div className={adminStyles.cardFooter} style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                              <div className={adminStyles.cardFooter} style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
                                 <span className="badge badge-neutral" style={{ fontSize: 12 }}>{q.branch}</span>
+                                {(q as any).year && <span className="badge badge-neutral" style={{ fontSize: 12, background: "rgba(139, 92, 246, 0.15)", color: "#a78bfa" }}>{(q as any).year}</span>}
                                 <span className="badge badge-neutral" style={{ fontSize: 12 }}>{q.marks} Marks</span>
                               </div>
                             </div>
@@ -3093,6 +3105,17 @@ function QuestionsTab() {
                 <label>Branch / Department</label>
                 <select className={adminStyles.input} value={formData.branch} onChange={(e) => setFormData(prev => ({ ...prev, branch: e.target.value }))}>
                   {ALL_BRANCH_DATA.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+
+              <div className={adminStyles.formGroup} style={{ margin: 0 }}>
+                <label>Target Year</label>
+                <select 
+                  className={adminStyles.input} 
+                  value={(formData as any).year || "1st Year"} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value } as any))}
+                >
+                  {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
 

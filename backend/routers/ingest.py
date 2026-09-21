@@ -787,12 +787,12 @@ async def commit_questions(
         # Probe the table to see exactly which columns exist
         probe = db.table("questions").select("*").limit(1).execute()
         db_columns = list(probe.data[0].keys()) if (probe.data and len(probe.data) > 0) else [
-            "id", "text", "options", "correct_answer", "marks", "order_index", "branch"
+            "id", "text", "options", "correct_answer", "marks", "order_index", "branch", "year"
         ]
         logger.info(f"Schema discovery: {db_columns}")
     except Exception as e:
         logger.warning(f"Schema probe failed, falling back to defaults: {e}")
-        db_columns = ["text", "options", "correct_answer", "marks", "order_index", "branch"]
+        db_columns = ["text", "options", "correct_answer", "marks", "order_index", "branch", "year"]
 
     # ── Step 2: Gravity Guard (Isolation Enforcement) ──
     safe_exam_name = request.exam_name.strip()
@@ -842,6 +842,7 @@ async def commit_questions(
             "correct_answer": q.correct_answer,
             "marks": q.marks,
             "branch": q.branch,
+            "year": getattr(q, "year", None) or getattr(request, "year", None) or "1st Year",
             "order_index": (max_order_index + 1 + i),
             "exam_name": safe_exam_name,
             "image_url": q.image_url,
@@ -873,6 +874,7 @@ async def commit_questions(
             
             # Get category from the first question (they should all be the same)
             primary_category = getattr(questions[0], "category", "other") or "other"
+            target_year = getattr(questions[0], "year", None) or getattr(request, "year", None) or "ALL"
 
             config_payload = {
                 "exam_title": safe_exam_name,
@@ -884,6 +886,10 @@ async def commit_questions(
             }
             if "category" in cfg_columns:
                 config_payload["category"] = primary_category
+            if "year" in cfg_columns:
+                config_payload["year"] = target_year
+            if "branch" in cfg_columns and questions:
+                config_payload["branch"] = questions[0].branch
 
             db.table("exam_config").upsert(config_payload, on_conflict="exam_title").execute()
             

@@ -3,6 +3,7 @@
 
 import { useCallback, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { BRANCHES, YEARS } from "@/lib/constants";
 import styles from "./ingest.module.css";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -14,6 +15,7 @@ interface ParsedQuestion {
   correct_answer: string;
   marks: number;
   branch: string;
+  year?: string;
   order_index: number;
   exam_name: string;
   image_url?: string;
@@ -36,18 +38,7 @@ interface ParseResult {
 
 type Phase = "idle" | "uploading" | "previewing" | "committing" | "done";
 
-const BRANCHES = [
-  { id: "CS", name: "CS(Cyber Security)" },
-  { id: "DS", name: "DS(Data Science)" },
-  { id: "CSE", name: "CSE(Computer Science & Engineering)" },
-  { id: "ISE", name: "ISE(Information Science & Engineering)" },
-  { id: "ECE", name: "ECE(Electronics & Communication Engineering)" },
-  { id: "AI-ML", name: "AI-ML(Artificial Intelligence & Machine Learning)" },
-  { id: "BCA", name: "BCA(Bachelor of Computer Applications)" },
-  { id: "MBA", name: "MBA(Master of Business Administration)" },
-  { id: "MCA", name: "MCA(Master of Computer Applications)" },
-  { id: "BBA", name: "BBA(Bachelor of Business Administration)" },
-];
+
 
 const FILE_ICONS: Record<string, string> = {
   pdf: "📄", docx: "📝", xlsx: "📊", xls: "📊", txt: "📃",
@@ -158,6 +149,7 @@ export default function IngestPage() {
   const [dragging, setDragging] = useState(false);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("CS");
+  const [selectedYear, setSelectedYear] = useState("1st Year");
   const [selectedCategory, setSelectedCategory] = useState("other");
   const [examName, setExamName] = useState("");
   const [maxQuestions, setMaxQuestions] = useState<number | "">("");
@@ -250,6 +242,7 @@ export default function IngestPage() {
     const questionsWithTether = result.questions.map((q, i) => ({
       ...q,
       branch: selectedBranch,
+      year: selectedYear,
       exam_name: examName,
       category: selectedCategory,
       order_index: i,
@@ -266,6 +259,7 @@ export default function IngestPage() {
           questions: questionsWithTether,
           replace_existing: replaceExisting,
           exam_name: examName,
+          year: selectedYear,
           max_questions: maxQuestions === "" ? null : maxQuestions,
         }),
       });
@@ -554,6 +548,16 @@ export default function IngestPage() {
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
+              <select
+                className={styles.input}
+                style={{ width: 140, height: 38, padding: "0 10px", fontSize: 13 }}
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                {YEARS.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -577,6 +581,7 @@ export default function IngestPage() {
                     Q{i + 1}
                     <span className="badge badge-neutral">{q.marks} mark{q.marks > 1 ? "s" : ""}</span>
                     <span className={styles.branchTag}>{selectedBranch}</span>
+                    <span className={styles.branchTag} style={{ background: "rgba(139, 92, 246, 0.15)", color: "#a78bfa", borderColor: "rgba(139, 92, 246, 0.3)" }}>{selectedYear}</span>
                     <span className={styles.branchTag} style={{ 
                       background: selectedCategory === 'aptitude' ? 'var(--accent-bg)' : selectedCategory === 'programming' ? 'var(--info-bg)' : 'var(--bg-secondary)', 
                       color: selectedCategory === 'aptitude' ? 'var(--accent)' : selectedCategory === 'programming' ? 'var(--info)' : 'var(--text-muted)',

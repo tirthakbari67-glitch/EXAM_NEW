@@ -180,7 +180,7 @@ async def create_faculty_question(
     # Dynamic schema discovery
     probe = db.table("questions").select("*").limit(1).execute()
     db_columns = list(probe.data[0].keys()) if (probe.data and len(probe.data) > 0) else [
-        "text", "options", "branch", "correct_answer", "marks", "order_index", "exam_name"
+        "text", "options", "branch", "year", "correct_answer", "marks", "order_index", "exam_name"
     ]
     
     full_data = request.model_dump()
@@ -280,7 +280,7 @@ async def update_faculty_question(
     # Filter by db_columns
     probe = db.table("questions").select("*").limit(1).execute()
     db_columns = list(probe.data[0].keys()) if (probe.data and len(probe.data) > 0) else [
-        "text", "options", "branch", "correct_answer", "marks", "order_index", "exam_name"
+        "text", "options", "branch", "year", "correct_answer", "marks", "order_index", "exam_name"
     ]
     data = {k: v for k, v in full_update_data.items() if k in db_columns}
 
@@ -592,6 +592,7 @@ async def get_faculty_students(exam: Optional[str] = Query(None), current_facult
                         name=s.get("name", "UNKNOWN"),
                         email=s.get("email"),
                         branch=s.get("branch", "CS"),
+                        year=s.get("year", "1st Year"),
                         status="not_started",
                         warnings=0,
                         score=score,
@@ -611,6 +612,7 @@ async def get_faculty_students(exam: Optional[str] = Query(None), current_facult
                         name=s.get("name", "UNKNOWN"),
                         email=s.get("email"),
                         branch=s.get("branch", "CS"),
+                        year=s.get("year", "1st Year"),
                         status=latest.get("status", "not_started"),
                         warnings=latest.get("warnings", 0),
                         score=score,

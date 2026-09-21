@@ -39,6 +39,7 @@ class QuestionOut(BaseModel):
     text: str
     options: List[str]
     branch: str = "CS"
+    year: Optional[str] = "1st Year"
     order_index: int
     marks: float
     neg_marks: float = 0.0
@@ -127,6 +128,7 @@ class QuestionCreate(BaseModel):
     text: str
     options: List[str]
     branch: str
+    year: Optional[str] = "1st Year"
     correct_answer: str
     marks: int = 1
     order_index: int
@@ -146,6 +148,7 @@ class QuestionUpdate(BaseModel):
     text: Optional[str] = None
     options: Optional[List[str]] = None
     branch: Optional[str] = None
+    year: Optional[str] = None
     correct_answer: Optional[str] = None
     marks: Optional[int] = None
     order_index: Optional[int] = None
@@ -216,6 +219,7 @@ class ExamConfig(BaseModel):
     total_marks: int = 120
     exam_description: Optional[str] = None
     branch: str = "ALL"
+    year: Optional[str] = "ALL"
     category: Optional[str] = "other"
 
 class ExamConfigUpdate(BaseModel):
@@ -234,6 +238,7 @@ class ExamConfigUpdate(BaseModel):
     total_marks: Optional[int] = None
     exam_description: Optional[str] = None
     branch: Optional[str] = None
+    year: Optional[str] = None
     category: Optional[str] = None
 
 # ── Global Config ──────────────────────────────────────────────
@@ -268,6 +273,7 @@ class ParsedQuestion(BaseModel):
     correct_answer: str
     marks: int = 1
     branch: str = "CS"
+    year: Optional[str] = "1st Year"
     order_index: int = 0
     exam_name: str = "Initial Assessment"
     image_url: Optional[str] = None
@@ -297,6 +303,7 @@ class BulkImportRequest(BaseModel):
     questions: List[ParsedQuestion]
     replace_existing: bool = False
     exam_name: str
+    year: Optional[str] = None
     max_questions: Optional[int] = None
 
 class FolderRenameRequest(BaseModel):

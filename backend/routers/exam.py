@@ -128,8 +128,8 @@ DYNAMIC_CONFIGS = [
 ]
 
 @router.get("/config/public")
-async def get_exam_config_public(branch: Optional[str] = Query(None)):
-    """Public exam config endpoint (no auth) — filtered by branch and active status."""
+async def get_exam_config_public(branch: Optional[str] = Query(None), year: Optional[str] = Query(None)):
+    """Public exam config endpoint (no auth) — filtered by branch, year, and active status."""
     db = get_supabase()
     try:
         # 1. Fetch ALL configs to check explicit deactivations
@@ -142,12 +142,20 @@ async def get_exam_config_public(branch: Optional[str] = Query(None)):
         all_configs_res = config_query.execute()
         all_configs = all_configs_res.data or []
         
-        # Filter to active configs
-        res_data = [c for c in all_configs if c.get("is_active") is not False]
+        # Filter to active configs and year match
+        res_data = []
+        for c in all_configs:
+            if c.get("is_active") is False:
+                continue
+            cfg_year = c.get("year")
+            if year and cfg_year and cfg_year != "ALL" and cfg_year.lower() != year.lower():
+                continue
+            res_data.append(c)
+
         configured_titles = {c.get("exam_title") for c in all_configs if c.get("exam_title")}
         
         # 2.5 Auto-discover implicit exams from questions table
-        questions_query = db.table("questions").select("exam_name, branch, category")
+        questions_query = db.table("questions").select("exam_name, branch, category, year")
         if branch:
             questions_query = questions_query.or_(f"branch.eq.{branch.upper()},branch.eq.ALL,branch.is.null")
         q_res = questions_query.execute()
@@ -157,10 +165,14 @@ async def get_exam_config_public(branch: Optional[str] = Query(None)):
             title = q.get("exam_name")
             if not title or title in configured_titles or title in implicit_added:
                 continue
+            q_year = q.get("year")
+            if year and q_year and q_year != "ALL" and q_year.lower() != year.lower():
+                continue
                 
             res_data.append({
                 "exam_title": title,
                 "branch": q.get("branch", "ALL"),
+                "year": q_year or "ALL",
                 "is_active": True,
                 "duration_minutes": 60,
                 "total_questions": 10,
@@ -281,6 +293,7 @@ def get_questions(
 
     try:
         branch = current.get("branch", "CS")
+        year = current.get("year")
         
         # Fetch total_questions from config
         limit_val = 100
@@ -290,36 +303,50 @@ def get_questions(
                 limit_val = int(config_res.data[0]["total_questions"])
         except Exception: pass
         
-        # ── Strategy 1: Strict Branch + Strict Title Match ──
-        query = db.table("questions").select("id, text, options, branch, order_index, marks, exam_name, image_url, audio_url, category, programming_type")
-        if branch != "ALL":
-            query = query.eq("branch", branch)
-        
-        result = query.eq("exam_name", title).order("order_index").limit(limit_val).execute()
+        select_cols = "id, text, options, branch, year, order_index, marks, exam_name, image_url, audio_url, category, programming_type"
 
-        # ── Strategy 2 (Swapped): Global Title Match (Cross-Branch Fallback) ──
+        # ── Strategy 1: Strict Branch + Strict Year + Strict Title Match ──
+        result = None
+        if year:
+            try:
+                query = db.table("questions").select(select_cols)
+                if branch != "ALL":
+                    query = query.eq("branch", branch)
+                res_y = query.eq("exam_name", title).eq("year", year).order("order_index").limit(limit_val).execute()
+                if res_y.data:
+                    result = res_y
+            except Exception: pass
+
+        # ── Strategy 2: Strict Branch + Strict Title Match ──
+        if not result or not result.data:
+            query = db.table("questions").select(select_cols)
+            if branch != "ALL":
+                query = query.eq("branch", branch)
+            result = query.eq("exam_name", title).order("order_index").limit(limit_val).execute()
+
+        # ── Strategy 3: Global Title Match (Cross-Branch Fallback) ──
         if not result.data:
             result = (
                 db.table("questions")
-                .select("id, text, options, branch, order_index, marks, exam_name, image_url, audio_url, category, programming_type")
+                .select(select_cols)
                 .eq("exam_name", title)
                 .order("order_index")
                 .limit(limit_val)
                 .execute()
             )
 
-        # ── Strategy 3 (Swapped): Strict Branch + Fuzzy Title Match ──
+        # ── Strategy 4: Strict Branch + Fuzzy Title Match ──
         if not result.data:
-            query = db.table("questions").select("id, text, options, branch, order_index, marks, exam_name, image_url, audio_url, category, programming_type")
+            query = db.table("questions").select(select_cols)
             if branch != "ALL":
                 query = query.eq("branch", branch)
             result = query.ilike("exam_name", f"%{title}%").order("order_index").limit(limit_val).execute()
             
-        # ── Strategy 4: Global Fuzzy Title Match ──
+        # ── Strategy 5: Global Fuzzy Title Match ──
         if not result.data:
             result = (
                 db.table("questions")
-                .select("id, text, options, branch, order_index, marks, exam_name, image_url, audio_url, category, programming_type")
+                .select(select_cols)
                 .ilike("exam_name", f"%{title}%")
                 .order("order_index")
                 .limit(limit_val)
@@ -360,6 +387,7 @@ def get_questions(
                 text=(q["text"] or "").replace(f"⟦EXAM:{title}⟧", "").strip(),
                 options=q["options"],
                 branch=q.get("branch", branch),
+                year=q.get("year", "1st Year"),
                 order_index=q["order_index"],
                 marks=q["marks"] if marks_override is None else marks_override,
                 neg_marks=neg_marks,

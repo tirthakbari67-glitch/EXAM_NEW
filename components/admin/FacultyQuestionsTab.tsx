@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { fetchPublicExamConfig, fetchAdminQuestions, createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, deleteAdminFolder, renameAdminFolder, editAdminFolderBranch, uploadQuestionImage, updateExamConfig, AdminQuestion, ExamConfig, FacultyProfile } from "@/lib/api";
-import { BRANCHES as BRANCH_LIST } from "@/lib/constants";
+import { BRANCHES as BRANCH_LIST, YEARS } from "@/lib/constants";
 import styles from "@/app/faculty/faculty.module.css";
 
 const ControlBtn = ({ label, icon, color, onClick, variant = "ghost" }: any) => (
@@ -21,6 +21,7 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminQuestion | null>(null);
   const [selectedBranch, setSelectedBranch] = useState("All");
+  const [selectedYear, setSelectedYear] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "aptitude" | "programming" | "other">("all");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "active" | "upcoming" | "inactive">("all");
   const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({});
@@ -34,6 +35,7 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
     text: "",
     options: ["", "", "", ""],
     branch: branches[0] || "CS",
+    year: "1st Year",
     correct_answer: "",
     order_index: 0,
     marks: 1,
@@ -83,9 +85,10 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
 
   const filteredQuestions = questions.filter((q) => {
     const branchMatch = selectedBranch === "All" || q.branch === selectedBranch;
+    const yearMatch = selectedYear === "All" || q.year === selectedYear;
     let categoryMatch = selectedCategory === "all" || getQCategory(q) === selectedCategory;
 
-    if (selectedStatus === "all") return branchMatch && categoryMatch;
+    if (selectedStatus === "all") return branchMatch && yearMatch && categoryMatch;
 
     const conf = configs.find((c: any) => c.exam_title === q.exam_name);
     const now = Date.now();
@@ -101,7 +104,7 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
       const end = conf?.scheduled_end ? new Date(conf.scheduled_end).getTime() : Infinity;
       statusMatch = (conf?.is_active === false) || (end < now);
     }
-    return branchMatch && categoryMatch && statusMatch;
+    return branchMatch && yearMatch && categoryMatch && statusMatch;
   });
 
   const branchFiltered = selectedBranch === "All" ? questions : questions.filter((q) => q.branch === selectedBranch);
@@ -166,6 +169,7 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
       text: "",
       options: ["", "", "", ""],
       branch: branches[0] || "CS",
+      year: "1st Year",
       correct_answer: "",
       order_index: questions.length,
       marks: 1,
@@ -189,7 +193,7 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
     setEditing(q);
     setFormCategory((q.category as any) || "other");
     const type = q.programming_type || "compiler";
-    setFormData({ ...q, programming_type: type });
+    setFormData({ ...q, year: q.year || "1st Year", programming_type: type });
     if (q.category === "programming" && type === "compiler") {
       let parsed = { target_output: "", test_cases: "[]", starter_code: "", starter_code_c: "", starter_code_cpp: "" };
       if (q.options && q.options.length > 0) {
@@ -340,6 +344,11 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
             value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
             <option value="All">All Branches</option>
             {branches.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <select className={styles.modalInput} style={{ width: 130, height: 36, padding: "0 8px", fontSize: 13, marginBottom: 0 }}
+            value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+            <option value="All">All Years</option>
+            {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
         <button className={styles.btnPrimary} onClick={handleAddNewQuestionClick}>
@@ -514,8 +523,9 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
                             </div>
                           )}
                           <p className={styles.questionCardText}>{q.text}</p>
-                          <div className={styles.questionCardFooter}>
+                          <div className={styles.questionCardFooter} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <span className={styles.branchTag}>{q.branch}</span>
+                            {q.year && <span className={styles.branchTag} style={{ background: "rgba(139, 92, 246, 0.15)", color: "#a78bfa" }}>{q.year}</span>}
                             <span className={styles.branchTag}>{q.marks} Marks</span>
                           </div>
                         </div>
@@ -572,6 +582,19 @@ export default function FacultyQuestionsTab({ branches, profile }: { branches: s
                     const info = BRANCH_LIST.find(x => x.id === b);
                     return <option key={b} value={b}>{info ? info.name : b}</option>;
                   })}
+                </select>
+              </div>
+
+              <div className={styles.modalFormGroup} style={{ margin: 0 }}>
+                <label>Target Year</label>
+                <select 
+                  className={styles.modalInput} 
+                  value={(formData as any).year || "1st Year"} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value } as any))}
+                >
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
                 </select>
               </div>
 

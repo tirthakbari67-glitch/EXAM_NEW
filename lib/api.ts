@@ -138,6 +138,7 @@ export interface Question {
   text: string;
   options: string[];
   branch: string;
+  year?: string;
   order_index: number;
   marks: number;
   neg_marks: number;
@@ -234,6 +235,7 @@ export interface AdminQuestion {
   text: string;
   options: string[];
   branch: string;
+  year?: string;
   correct_answer: string;
   order_index: number;
   marks: number;
@@ -326,6 +328,7 @@ export async function createAdminQuestion(data: {
   text: string;
   options: string[];
   branch: string;
+  year?: string;
   correct_answer: string;
   order_index: number;
   marks: number;
@@ -343,6 +346,7 @@ export async function updateAdminQuestion(
     text: string;
     options: string[];
     branch: string;
+    year: string;
     correct_answer: string;
     order_index: number;
     marks: number;
@@ -494,6 +498,7 @@ export interface ExamConfig {
   total_marks: number;
   exam_description: string | null;
   branch: string;
+  year?: string;
   category?: string;
 }
 
