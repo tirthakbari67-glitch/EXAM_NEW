@@ -334,6 +334,7 @@ async def get_all_students(background_tasks: BackgroundTasks, exam: Optional[str
                         name=s.get("name", "UNKNOWN"),
                         email=s.get("email"),
                         branch=s.get("branch", "CS"),
+                        year=s.get("year", "1st Year"),
                         status="not_started",
                         warnings=0,
                         score=score,
@@ -353,6 +354,7 @@ async def get_all_students(background_tasks: BackgroundTasks, exam: Optional[str
                         name=s.get("name", "UNKNOWN"),
                         email=s.get("email"),
                         branch=s.get("branch", "CS"),
+                        year=s.get("year", "1st Year"),
                         status=latest.get("status", "not_started"),
                         warnings=latest.get("warnings", 0),
                         score=score,
@@ -450,6 +452,7 @@ async def get_student_fidelity(student_id: str, _: bool = Depends(verify_admin))
         usn=s.get("usn", "N/A"),
         email=s.get("email"),
         branch=s.get("branch", "CS"),
+        year=s.get("year", "1st Year"),
         status=status.get("status", "not_started"),
         warnings=status.get("warnings", 0),
         score=results[0].get("score", 0) if results else 0,
@@ -479,6 +482,7 @@ async def create_student(request: StudentCreate, _: bool = Depends(verify_admin)
         "name": request.name,
         "email": request.email,
         "branch": request.branch,
+        "year": request.year or "1st Year",
         "password_hash": hash_password(request.password)
     }
 
@@ -508,6 +512,8 @@ async def update_student(student_id: str, request: StudentUpdate, _: bool = Depe
         update_data["usn"] = request.usn.upper()
     if request.branch is not None:
         update_data["branch"] = request.branch
+    if request.year is not None:
+        update_data["year"] = request.year
     if request.password is not None:
         update_data["password_hash"] = hash_password(request.password)
     if request.is_active_session is not None:

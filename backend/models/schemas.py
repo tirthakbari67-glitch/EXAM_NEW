@@ -8,6 +8,7 @@ class LoginRequest(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     branch: Optional[str] = None
+    year: Optional[str] = None
 
 class LoginResponse(BaseModel):
     access_token: str
@@ -17,6 +18,7 @@ class LoginResponse(BaseModel):
     usn: Optional[str] = None
     email: Optional[str] = None
     branch: str = "CS"
+    year: Optional[str] = "1st Year"
     exam_start_time: Optional[str] = None
     exam_duration_minutes: int = 20
     exam_title: Optional[str] = "Initial Assessment"
@@ -164,6 +166,7 @@ class StudentCreate(BaseModel):
     name: str
     email: Optional[str] = None
     branch: str
+    year: Optional[str] = "1st Year"
     password: str
 
 class StudentUpdate(BaseModel):
@@ -171,6 +174,7 @@ class StudentUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     branch: Optional[str] = None
+    year: Optional[str] = None
     password: Optional[str] = None
     is_active_session: Optional[bool] = None
     is_blocked: Optional[bool] = None
@@ -181,6 +185,7 @@ class StudentStatus(BaseModel):
     name: str
     email: Optional[str] = None
     branch: str = "CS"
+    year: Optional[str] = "1st Year"
     status: str
     warnings: int
     score: Optional[float] = 0.0
@@ -332,6 +337,7 @@ class StudentFidelity(BaseModel):
     usn: str
     email: Optional[str]
     branch: str
+    year: Optional[str] = "1st Year"
     status: str
     warnings: int
     score: float

@@ -65,6 +65,7 @@ async def login(request: LoginRequest):
                 "name": request.name.strip(),
                 "email": request.email.strip(),
                 "branch": request.branch or "CS",
+                "year": request.year or "1st Year",
                 "password_hash": hash_password(request.password)
             }
             # Only keep fields that exist in the DB
@@ -150,6 +151,7 @@ async def login(request: LoginRequest):
         if request.name: update_student_data["name"] = request.name
         if request.email: update_student_data["email"] = request.email
         if request.branch: update_student_data["branch"] = request.branch
+        if request.year: update_student_data["year"] = request.year
 
         db.table("students").update(update_student_data).eq("id", student["id"]).execute()
     except Exception as e:
@@ -220,6 +222,7 @@ async def login(request: LoginRequest):
         student_name=request.name or student.get("name"),
         email=request.email or student.get("email"),
         branch=current_branch,
+        year=request.year or student.get("year", "1st Year"),
         exam_start_time=started_at,
         exam_duration_minutes=current_duration,
         exam_title=current_exam_title,

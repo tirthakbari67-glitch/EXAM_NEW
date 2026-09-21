@@ -46,7 +46,7 @@ import {
   fetchPublicPyHuntConfig,
   GlobalConfigEntry,
 } from "@/lib/api";
-import { BRANCHES as BRANCH_LIST, BRANCH_IDS } from "@/lib/constants";
+import { BRANCHES as BRANCH_LIST, BRANCH_IDS, YEARS } from "@/lib/constants";
 import styles from "./admin.module.css";
 import adminStyles from "./admin-management.module.css";
 import Skeleton from "@/components/Skeleton";
@@ -3778,7 +3778,7 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminStudent | null>(null);
-  const [formData, setFormData] = useState({ usn: "", name: "", email: "", branch: "CS", password: "" });
+  const [formData, setFormData] = useState({ usn: "", name: "", email: "", branch: "CS", year: "1st Year", password: "" });
 
   useEffect(() => {
     if (students.length === 0) load();
@@ -3797,13 +3797,14 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
         if (formData.name) updateData.name = formData.name;
         if (formData.email) updateData.email = formData.email;
         if (formData.branch) updateData.branch = formData.branch;
+        if (formData.year) updateData.year = formData.year;
         if (formData.password) updateData.password = formData.password;
         await updateAdminStudent(editing.student_id, updateData);
       } else {
         await createAdminStudent(formData);
       }
       setShowModal(false); setEditing(null);
-      setFormData({ usn: "", name: "", email: "", branch: "CS", password: "" });
+      setFormData({ usn: "", name: "", email: "", branch: "CS", year: "1st Year", password: "" });
       load();
     } catch (e: any) { alert(e.message || "Failed to save student"); }
   };
@@ -3850,7 +3851,7 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
           <button className="btn btn-outline text-danger" onClick={handleDeleteAll}>
             Delete All Students
           </button>
-          <button className="btn btn-primary" onClick={() => { setEditing(null); setFormData({ usn: "", name: "", email: "", branch: "CS", password: "" }); setShowModal(true); }}>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); setFormData({ usn: "", name: "", email: "", branch: "CS", year: "1st Year", password: "" }); setShowModal(true); }}>
             + Add Student (DEBUG-V3)
           </button>
         </div>
@@ -3864,7 +3865,7 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
         <div className={adminStyles.tableWrapper}>
           <table className={adminStyles.table}>
             <thead>
-              <tr><th>#</th><th>USN</th><th>Name</th><th>Email</th><th>Branch</th><th>Status</th><th>Warnings</th><th>Actions</th></tr>
+              <tr><th>#</th><th>USN</th><th>Name</th><th>Email</th><th>Branch</th><th>Year</th><th>Status</th><th>Warnings</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {students.map((s, i) => (
@@ -3874,6 +3875,7 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
                   <td>{s.name}</td>
                   <td style={{ fontSize: 12 }}>{s.email || "—"}</td>
                   <td><span className="badge badge-neutral">{s.branch || "CS"}</span></td>
+                  <td><span className="badge badge-neutral">{s.year || "1st Year"}</span></td>
                   <td>
                     {s.is_blocked ? (
                       <span className="badge badge-danger" style={{ background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid var(--danger)" }}>Blocked</span>
@@ -3891,7 +3893,7 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
                         if (match) bID = match.id;
 
                         setEditing(s as any);
-                        setFormData({ usn: s.usn, name: s.name, email: s.email || "", branch: bID, password: "" });
+                        setFormData({ usn: s.usn, name: s.name, email: s.email || "", branch: bID, year: s.year || "1st Year", password: "" });
                         setShowModal(true);
                       }}>Edit</button>
                       <button className="btn btn-outline" onClick={() => { const p = prompt("Enter new password:"); if (p) updateAdminStudent(s.student_id, { password: p }).then(() => alert("Password reset")); }}>Reset PW</button>
@@ -3943,6 +3945,12 @@ function StudentsTab({ students, load }: { students: AdminStudent[], load: (exam
               <label>Branch</label>
               <select className={adminStyles.input} value={formData.branch} onChange={(e) => setFormData(prev => ({ ...prev, branch: e.target.value }))}>
                 {ALL_BRANCH_DATA.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div className={adminStyles.formGroup}>
+              <label>Year</label>
+              <select className={adminStyles.input} value={formData.year} onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}>
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             <div className={adminStyles.formGroup}>

@@ -85,6 +85,7 @@ export interface LoginResponse {
   student_name: string;
   email?: string;
   branch: string;
+  year?: string;
   exam_start_time: string | null;
   exam_duration_minutes: number;
   exam_title: string;
@@ -102,7 +103,7 @@ export async function resetSession(usn: string, password: string): Promise<void>
 export async function loginStudent(
   usn: string,
   password: string,
-  metadata?: { name?: string; email?: string; branch?: string }
+  metadata?: { name?: string; email?: string; branch?: string; year?: string }
 ): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
@@ -263,6 +264,7 @@ export interface AdminStudent {
   submitted_at: string | null;
   started_at: string | null;
   is_blocked: boolean;
+  year?: string;
   exam_name?: string | null;
   current_round?: number | null;
   round_1_state?: any;
@@ -371,6 +373,7 @@ export async function createAdminStudent(data: {
   name: string;
   email?: string;
   branch: string;
+  year?: string;
   password: string;
 }): Promise<{ id: string }> {
   return adminFetch<{ id: string }>("/admin/students", {
@@ -381,7 +384,7 @@ export async function createAdminStudent(data: {
 
 export async function updateAdminStudent(
   id: string,
-  data: { usn?: string; name?: string; email?: string; branch?: string; password?: string; is_active_session?: boolean; is_blocked?: boolean }
+  data: { usn?: string; name?: string; email?: string; branch?: string; year?: string; password?: string; is_active_session?: boolean; is_blocked?: boolean }
 ): Promise<{ updated: boolean }> {
   return adminFetch<{ updated: boolean }>(`/admin/students/${id}`, {
     method: "PATCH",

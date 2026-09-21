@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LazyMotion, domAnimation, m, AnimatePresence } from "framer-motion";
 import { loginStudent, submitSupportRequest } from "@/lib/api";
 import { clearExamStorage } from "@/hooks/useExamState";
-import { BRANCHES } from "@/lib/constants";
+import { BRANCHES, YEARS } from "@/lib/constants";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -16,11 +16,13 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [branch, setBranch] = useState("DS");
+  const [year, setYear] = useState("1st Year");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isBranchOpen, setIsBranchOpen] = useState(false);
+  const [isYearOpen, setIsYearOpen] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [modalType, setModalType] = useState<"recovery" | "support">("recovery");
   const [helpUsn, setHelpUsn] = useState("");
@@ -56,7 +58,8 @@ export default function LoginPage() {
       const data = await loginStudent(usn.trim(), password, {
         name: name.trim() || undefined,
         email: email.trim() || undefined,
-        branch: branch
+        branch: branch,
+        year: year
       });
 
       // Clear previous student's cached answers on new login
@@ -233,6 +236,45 @@ export default function LoginPage() {
                             }}
                           >
                             {b.name}
+                          </div>
+                        ))}
+                      </m.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className={styles.selectWrapper}>
+                  <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <div
+                    className={styles.selectTrigger}
+                    onClick={() => setIsYearOpen(!isYearOpen)}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {year}
+                    </span>
+                    <span style={{ fontSize: '10px', opacity: 0.5 }}>{isYearOpen ? "▲" : "▼"}</span>
+                  </div>
+
+                  <AnimatePresence>
+                    {isYearOpen && (
+                      <m.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className={styles.selectOptions}
+                      >
+                        {YEARS.map(y => (
+                          <div
+                            key={y}
+                            className={styles.selectOption}
+                            onClick={() => {
+                              setYear(y);
+                              setIsYearOpen(false);
+                            }}
+                          >
+                            {y}
                           </div>
                         ))}
                       </m.div>
