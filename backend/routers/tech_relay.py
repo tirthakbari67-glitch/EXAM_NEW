@@ -28,7 +28,7 @@ class RoundConfigCreate(BaseModel):
     round_type: str
     content: dict = {}
     correct_answer: Optional[str] = None
-    time_limit_seconds: int = 300
+    time_limit_seconds: int = 0
     is_active: bool = False
 
 class RelayToggle(BaseModel):
@@ -115,6 +115,7 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
         for r in rounds:
             r_copy = dict(r)
             r_copy.pop("correct_answer", None)
+            r_copy["time_limit_seconds"] = 0  # No time limit on any round
             round_num = r_copy.get("round_number")
             content = r_copy.get("content")
             if isinstance(content, str):

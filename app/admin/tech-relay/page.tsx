@@ -29,7 +29,7 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
     round_title: "Identity Gadgets",
     round_type: "gadget",
     correct_answer: "CAMERA",
-    time_limit_seconds: 300,
+    time_limit_seconds: 0,
     content: {
       questions: [
         {
@@ -110,7 +110,7 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
     round_title: "Solve Puzzle",
     round_type: "puzzle",
     correct_answer: "6",
-    time_limit_seconds: 300,
+    time_limit_seconds: 0,
     content: {
       questions: [
         {
@@ -128,7 +128,7 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
     round_title: "Find a Code Error",
     round_type: "debug",
     correct_answer: "fibonacci(n-2)",
-    time_limit_seconds: 300,
+    time_limit_seconds: 0,
     content: {
       questions: [
         {
@@ -148,7 +148,7 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
     round_title: "Speed Tech Quiz",
     round_type: "mcq",
     correct_answer: "mcq_all",
-    time_limit_seconds: 300,
+    time_limit_seconds: 0,
     content: {
       questions: [
         {
@@ -185,7 +185,7 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
     round_title: "Decode Vault Password",
     round_type: "password",
     correct_answer: "TECHRELAY",
-    time_limit_seconds: 300,
+    time_limit_seconds: 0,
     content: {
       questions: [
         {
@@ -581,7 +581,7 @@ export default function TechRelayAdminPage() {
         round_title: editingRound.round_title || `Round ${editingRound.round_number}`,
         round_type: editingRound.round_type || "puzzle",
         correct_answer: editingRound.correct_answer || "",
-        time_limit_seconds: Number(editingRound.time_limit_seconds || 300),
+        time_limit_seconds: Number(editingRound.time_limit_seconds ?? 0),
         content: finalContent,
         is_active: isActive,
       });
@@ -1124,7 +1124,7 @@ export default function TechRelayAdminPage() {
 
                     <h3 className={styles.roundCardTitle}>{round.round_title}</h3>
                     <div className={styles.roundCardType}>
-                      Type: <strong>{round.round_type}</strong> • Limit: <strong>{round.time_limit_seconds}s</strong>
+                      Type: <strong>{round.round_type}</strong> • Limit: <strong>{round.time_limit_seconds && round.time_limit_seconds > 0 ? `${round.time_limit_seconds}s` : "No Limit (Unlimited)"}</strong>
                     </div>
 
                     <div className={styles.roundCardPreview}>
@@ -1302,12 +1302,14 @@ export default function TechRelayAdminPage() {
 
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Time Limit (Seconds)</label>
+                <label className={styles.formLabel}>Time Limit (Seconds, 0 = No Limit)</label>
                 <input
                   className={styles.formInput}
                   type="number"
-                  value={editingRound.time_limit_seconds || 300}
-                  onChange={(e) => setEditingRound({ ...editingRound, time_limit_seconds: Number(e.target.value) })}
+                  min={0}
+                  placeholder="0 (No Limit)"
+                  value={editingRound.time_limit_seconds ?? 0}
+                  onChange={(e) => setEditingRound({ ...editingRound, time_limit_seconds: Math.max(0, Number(e.target.value)) })}
                 />
               </div>
 

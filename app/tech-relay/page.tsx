@@ -650,7 +650,7 @@ export default function TechRelayPage() {
           </form>
 
           <div style={{ marginTop: 24, padding: "12px 18px", borderRadius: 10, background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.07)", fontSize: 12, color: "rgba(255, 255, 255, 0.4)" }}>
-            ℹ️ Entering the start code will record your official entry on the tournament live monitor and start your challenge timer.
+            ℹ️ Entering the start code will record your official entry on the tournament live monitor and begin your challenge (No time limit).
           </div>
         </div>
       </div>
