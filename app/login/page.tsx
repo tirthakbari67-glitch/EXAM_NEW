@@ -649,6 +649,7 @@ export default function LoginPage() {
               {loading ? "Sending Code..." : isRegistering ? "Send OTP & Register" : "Continue with OTP"}
             </button>
 
+            {/* Temporarily commented out: Sign in with Google
             {!isRegistering && (
               <>
                 <div className={styles.oauthDivider}>
@@ -686,6 +687,7 @@ export default function LoginPage() {
                 </button>
               </>
             )}
+            */}
           </form>
         )}
 
