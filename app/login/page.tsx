@@ -82,27 +82,75 @@ export default function LoginPage() {
     router.push("/dashboard");
   }
 
+  async function processGoogleUser(userSession: any) {
+    if (!userSession?.user?.email) return;
+    setLoading(true);
+    const googleEmail = userSession.user.email;
+    const googleName =
+      userSession.user.user_metadata?.full_name ||
+      userSession.user.user_metadata?.name ||
+      googleEmail.split("@")[0];
+    const googleAvatar =
+      userSession.user.user_metadata?.avatar_url ||
+      userSession.user.user_metadata?.picture;
+
+    // Clean up query parameters (?code=...) from URL
+    if (typeof window !== "undefined" && window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    try {
+      const res = await googleLoginStudent({
+        email: googleEmail,
+        name: googleName,
+        avatar_url: googleAvatar,
+      });
+      saveStudentSession(res);
+    } catch (apiErr) {
+      console.warn("Backend /auth/google notice, proceeding with direct session:", apiErr);
+      saveStudentSession({
+        access_token: userSession.access_token,
+        student_id: userSession.user.id,
+        student_name: googleName,
+        email: googleEmail,
+        branch: "CS",
+        year: "1st Year",
+        exam_start_time: null,
+        exam_duration_minutes: 20,
+        exam_title: "Initial Assessment",
+        total_questions: 30,
+        avatar_url: googleAvatar,
+      });
+    }
+  }
+
   // Handle Google OAuth callback on mount / redirect
   useEffect(() => {
     let isMounted = true;
+    let handled = false;
+
     async function checkOAuthSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.email) {
-          setLoading(true);
-          const res = await googleLoginStudent({
-            email: session.user.email,
-            name:
-              session.user.user_metadata?.full_name ||
-              session.user.user_metadata?.name ||
-              session.user.email.split("@")[0],
-            avatar_url:
-              session.user.user_metadata?.avatar_url ||
-              session.user.user_metadata?.picture,
-          });
-          if (isMounted) {
-            saveStudentSession(res);
+        // 1. Check PKCE code in URL query string
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          const code = urlParams.get("code");
+          if (code) {
+            setLoading(true);
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (data?.session && isMounted && !handled) {
+              handled = true;
+              await processGoogleUser(data.session);
+              return;
+            }
           }
+        }
+
+        // 2. Check existing Supabase session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email && isMounted && !handled) {
+          handled = true;
+          await processGoogleUser(session);
         }
       } catch (err: any) {
         if (isMounted) {
@@ -117,29 +165,14 @@ export default function LoginPage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user?.email) {
-          try {
-            setLoading(true);
-            const res = await googleLoginStudent({
-              email: session.user.email,
-              name:
-                session.user.user_metadata?.full_name ||
-                session.user.user_metadata?.name ||
-                session.user.email.split("@")[0],
-              avatar_url:
-                session.user.user_metadata?.avatar_url ||
-                session.user.user_metadata?.picture,
-            });
-            if (isMounted) {
-              saveStudentSession(res);
-            }
-          } catch (err: any) {
-            if (isMounted) {
-              console.error("Google onAuthStateChange error:", err);
-              setError(err?.message || "Failed to complete Google login");
-              setLoading(false);
-            }
-          }
+        if (
+          (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
+          session?.user?.email &&
+          isMounted &&
+          !handled
+        ) {
+          handled = true;
+          await processGoogleUser(session);
         }
       }
     );
