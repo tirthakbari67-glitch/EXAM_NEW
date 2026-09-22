@@ -65,3 +65,13 @@ CREATE TRIGGER update_tech_relay_config_updated_at
   BEFORE UPDATE ON tech_relay_config
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Enable Supabase Realtime for live observer tracking
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE tech_relay_progress;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+  WHEN undefined_object THEN NULL;
+END $$;
+
+

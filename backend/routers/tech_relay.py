@@ -18,6 +18,7 @@ class RoundSubmission(BaseModel):
     round_number: int
     answer: str
     relay_name: str = "Tech Relay"
+    question_index: Optional[int] = 0
 
 class RoundConfigCreate(BaseModel):
     id: Optional[str] = None
@@ -33,6 +34,15 @@ class RoundConfigCreate(BaseModel):
 class RelayToggle(BaseModel):
     relay_name: str = "Tech Relay"
     is_active: bool
+
+class ForceUnlockRequest(BaseModel):
+    student_id: str
+    next_round: int
+    relay_name: str = "Tech Relay"
+
+class ResetStudentRequest(BaseModel):
+    student_id: str
+    relay_name: str = "Tech Relay"
 
 
 # ── Admin Dependency ─────────────────────────────────────────────
@@ -52,7 +62,7 @@ async def verify_admin(x_admin_secret: str = Header(...)):
 
 @router.get("/config")
 async def get_relay_config(current: dict = Depends(get_current_student)):
-    """Get active relay config with all rounds (strips correct_answer)."""
+    """Get active relay config with all rounds (strips correct answers for anti-cheat)."""
     db = get_supabase()
     try:
         result = db.table("tech_relay_config") \
@@ -61,13 +71,36 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
             .order("round_number") \
             .execute()
         rounds = result.data or []
+
+        sanitized_rounds = []
         for r in rounds:
-            if isinstance(r.get("content"), str):
+            r_copy = dict(r)
+            r_copy.pop("correct_answer", None)
+            content = r_copy.get("content")
+            if isinstance(content, str):
                 try:
-                    r["content"] = json.loads(r["content"])
+                    content = json.loads(content)
                 except Exception:
-                    pass
-        return {"rounds": rounds}
+                    content = {}
+            if isinstance(content, dict):
+                content_copy = dict(content)
+                # If there are sub-questions in content, sanitize each question
+                if "questions" in content_copy and isinstance(content_copy["questions"], list):
+                    clean_questions = []
+                    for q in content_copy["questions"]:
+                        if isinstance(q, dict):
+                            qc = dict(q)
+                            qc.pop("correct_answer", None)
+                            qc.pop("correct", None)
+                            qc.pop("answer", None)
+                            clean_questions.append(qc)
+                        else:
+                            clean_questions.append(q)
+                    content_copy["questions"] = clean_questions
+                r_copy["content"] = content_copy
+            sanitized_rounds.append(r_copy)
+
+        return {"rounds": sanitized_rounds}
     except Exception as e:
         print(f"[TECH_RELAY] Config fetch note: {e}")
         return {"rounds": []}
@@ -75,7 +108,7 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
 
 @router.get("/progress")
 async def get_relay_progress(current: dict = Depends(get_current_student)):
-    """Get current student's relay progress."""
+    """Get current student's relay progress including sub-question index."""
     db = get_supabase()
     student_id = current["student_id"]
     try:
@@ -83,10 +116,39 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             .select("*") \
             .eq("student_id", student_id) \
             .execute()
+
         if result.data and len(result.data) > 0:
-            return result.data[0]
+            row = result.data[0]
+            rounds_completed = row.get("rounds_completed", [])
+            if isinstance(rounds_completed, str):
+                try:
+                    rounds_completed = json.loads(rounds_completed)
+                except Exception:
+                    rounds_completed = []
+
+            current_question_index = 0
+            clean_completed = []
+            for item in rounds_completed:
+                if isinstance(item, dict) and item.get("_meta"):
+                    current_question_index = item.get("current_question_index", 0)
+                else:
+                    clean_completed.append(item)
+
+            return {
+                "id": row.get("id"),
+                "student_id": row.get("student_id"),
+                "relay_name": row.get("relay_name", "Tech Relay"),
+                "current_round": row.get("current_round", 1),
+                "current_question_index": current_question_index,
+                "rounds_completed": clean_completed,
+                "is_completed": row.get("is_completed", False),
+                "started_at": row.get("started_at"),
+                "completed_at": row.get("completed_at"),
+            }
+
         return {
             "current_round": 1,
+            "current_question_index": 0,
             "rounds_completed": [],
             "is_completed": False,
             "started_at": None,
@@ -96,6 +158,7 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
         print(f"[TECH_RELAY] Progress fetch note: {e}")
         return {
             "current_round": 1,
+            "current_question_index": 0,
             "rounds_completed": [],
             "is_completed": False,
             "started_at": None,
@@ -105,12 +168,13 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
 
 @router.post("/submit-round")
 async def submit_round(body: RoundSubmission, current: dict = Depends(get_current_student)):
-    """Submit answer for a round. Validates and advances progress if correct."""
+    """Submit answer for a round or sub-question. Validates and advances progress."""
     db = get_supabase()
     student_id = current["student_id"]
     relay_name = body.relay_name
     round_num = body.round_number
     answer = body.answer.strip()
+    q_idx = max(0, body.question_index or 0)
 
     # 1. Fetch the round config
     config_result = db.table("tech_relay_config") \
@@ -143,48 +207,120 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
     if progress and progress.get("is_completed"):
         raise HTTPException(status_code=400, detail="You have already completed this relay")
 
-    # 3. Validate the answer based on round type
+    # 3. Parse content & check for multiple questions
+    content = round_config.get("content", {})
+    if isinstance(content, str):
+        try:
+            content = json.loads(content)
+        except Exception:
+            content = {}
+
+    questions = content.get("questions") if isinstance(content, dict) else None
+    has_multi_questions = isinstance(questions, list) and len(questions) > 0
+
     is_correct = False
 
-    if round_type == "mcq":
-        # For MCQ rounds, answer is JSON: {"answers": [0, 1, 2, 0, 3]}
-        try:
-            submitted = json.loads(answer)
-            submitted_answers = submitted.get("answers", [])
-            content = round_config["content"]
-            questions = content.get("questions", [])
-            if len(submitted_answers) == len(questions):
-                is_correct = all(
-                    submitted_answers[i] == questions[i].get("correct")
-                    for i in range(len(questions))
-                )
-        except (json.JSONDecodeError, KeyError, IndexError):
-            is_correct = False
+    if has_multi_questions:
+        if q_idx >= len(questions):
+            raise HTTPException(status_code=400, detail="Invalid question index for this round")
+        target_q = questions[q_idx]
+
+        if round_type == "mcq":
+            expected = target_q.get("correct")
+            if expected is None:
+                expected = target_q.get("correct_answer")
+            try:
+                submitted_val = int(answer)
+                is_correct = (submitted_val == int(expected))
+            except (ValueError, TypeError):
+                is_correct = str(answer).strip().lower() == str(expected).strip().lower()
+        else:
+            expected = target_q.get("correct_answer") or target_q.get("answer") or target_q.get("correct") or ""
+            is_correct = str(answer).strip().lower() == str(expected).strip().lower()
+
+        if not is_correct:
+            return {"success": False, "message": "Incorrect answer. Try again!"}
+
+        # If correct, check if more questions remain in this round
+        if q_idx + 1 < len(questions):
+            next_q_idx = q_idx + 1
+            now = datetime.now(timezone.utc).isoformat()
+            rounds_completed = progress.get("rounds_completed", []) if progress else []
+            if isinstance(rounds_completed, str):
+                try:
+                    rounds_completed = json.loads(rounds_completed)
+                except Exception:
+                    rounds_completed = []
+
+            rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
+            rounds_completed.append({"_meta": True, "current_question_index": next_q_idx})
+
+            progress_data = {
+                "student_id": student_id,
+                "relay_name": relay_name,
+                "current_round": round_num,
+                "rounds_completed": json.dumps(rounds_completed),
+                "is_completed": False
+            }
+            if progress:
+                db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+            else:
+                progress_data["started_at"] = now
+                db.table("tech_relay_progress").insert(progress_data).execute()
+
+            return {
+                "success": True,
+                "round_cleared": False,
+                "next_question_index": next_q_idx,
+                "total_questions": len(questions),
+                "message": f"🎉 Question {q_idx + 1} Solved! Question {next_q_idx + 1} Unlocked."
+            }
+
     else:
-        # For text-based rounds, case-insensitive exact match
-        correct = (round_config.get("correct_answer") or "").strip().lower()
-        is_correct = answer.lower() == correct
+        # Legacy single question format
+        if round_type == "mcq":
+            try:
+                submitted = json.loads(answer)
+                submitted_answers = submitted.get("answers", [])
+                quiz_questions = content.get("questions", [])
+                if len(submitted_answers) == len(quiz_questions):
+                    is_correct = all(
+                        submitted_answers[i] == quiz_questions[i].get("correct")
+                        for i in range(len(quiz_questions))
+                    )
+            except Exception:
+                is_correct = False
+        else:
+            correct = (round_config.get("correct_answer") or "").strip().lower()
+            is_correct = answer.lower() == correct
 
-    if not is_correct:
-        return {"success": False, "message": "Incorrect answer. Try again!"}
+        if not is_correct:
+            return {"success": False, "message": "Incorrect answer. Try again!"}
 
-    # 4. Update progress
+    # 4. Round successfully cleared! Update progress & advance round
     now = datetime.now(timezone.utc).isoformat()
-    rounds_completed = progress["rounds_completed"] if progress else []
+    rounds_completed = progress.get("rounds_completed", []) if progress else []
     if isinstance(rounds_completed, str):
-        rounds_completed = json.loads(rounds_completed)
+        try:
+            rounds_completed = json.loads(rounds_completed)
+        except Exception:
+            rounds_completed = []
 
-    # Count attempts for this round
+    rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
+
     existing_entry = next((r for r in rounds_completed if r.get("round") == round_num), None)
     attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
 
-    # Remove old entry if exists, add new completed entry
     rounds_completed = [r for r in rounds_completed if r.get("round") != round_num]
     rounds_completed.append({
         "round": round_num,
         "completed_at": now,
-        "attempts": attempts
+        "attempts": attempts,
+        "questions_solved": len(questions) if has_multi_questions else 1
     })
+
+    # Reset question index for next round
+    rounds_completed.append({"_meta": True, "current_question_index": 0})
 
     next_round = round_num + 1
     is_relay_complete = round_num >= 5
@@ -211,14 +347,16 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
 
     return {
         "success": True,
+        "round_cleared": True,
         "message": "🏆 Relay Complete! Congratulations!" if is_relay_complete else f"Round {round_num} cleared! Round {next_round} unlocked.",
         "next_round": None if is_relay_complete else next_round,
+        "next_question_index": 0,
         "is_completed": is_relay_complete
     }
 
 
 # ══════════════════════════════════════════════════════════════════
-#  ADMIN ENDPOINTS
+#  ADMIN ENDPOINTS (OBSERVER & CONFIG)
 # ══════════════════════════════════════════════════════════════════
 
 @router.get("/admin/config")
@@ -246,11 +384,10 @@ async def admin_get_config(_: bool = Depends(verify_admin)):
 
 @router.post("/admin/config")
 async def admin_save_round(body: RoundConfigCreate, _: bool = Depends(verify_admin)):
-    """Create or update a relay round config (upsert on relay_name + round_number)."""
+    """Create or update a relay round config."""
     try:
         db = get_supabase()
 
-        # Check if round exists
         existing = db.table("tech_relay_config") \
             .select("id") \
             .eq("relay_name", body.relay_name) \
@@ -260,7 +397,6 @@ async def admin_save_round(body: RoundConfigCreate, _: bool = Depends(verify_adm
         data = body.model_dump()
         target_id = data.pop("id", None)
 
-        # Content must be a dict for jsonb in postgrest
         if isinstance(data.get("content"), str):
             try:
                 data["content"] = json.loads(data["content"])
@@ -327,13 +463,167 @@ async def admin_toggle_relay(body: RelayToggle, _: bool = Depends(verify_admin))
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/admin/students")
+async def admin_get_relay_students(relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
+    """Fetch all students with their Tech Relay progress, anti-cheat strikes, and live status."""
+    try:
+        db = get_supabase()
+
+        # 1. Fetch all students
+        students_res = db.table("students").select("id, usn, name, branch, is_blocked").execute()
+        students_list = students_res.data or []
+
+        # 2. Fetch all progress for this relay
+        progress_res = db.table("tech_relay_progress") \
+            .select("*") \
+            .eq("relay_name", relay_name) \
+            .execute()
+        progress_map = {p["student_id"]: p for p in (progress_res.data or [])}
+
+        # 3. Fetch violations count for strikes
+        try:
+            viol_res = db.table("violations").select("student_id").execute()
+            viol_counts = {}
+            for v in (viol_res.data or []):
+                sid = v["student_id"]
+                viol_counts[sid] = viol_counts.get(sid, 0) + 1
+        except Exception:
+            viol_counts = {}
+
+        # 4. Assemble participant list
+        participants = []
+        for s in students_list:
+            sid = s["id"]
+            p = progress_map.get(sid)
+
+            rounds_completed = []
+            current_q_idx = 0
+            if p:
+                raw_rc = p.get("rounds_completed", [])
+                if isinstance(raw_rc, str):
+                    try:
+                        raw_rc = json.loads(raw_rc)
+                    except Exception:
+                        raw_rc = []
+                for item in raw_rc:
+                    if isinstance(item, dict) and item.get("_meta"):
+                        current_q_idx = item.get("current_question_index", 0)
+                    else:
+                        rounds_completed.append(item)
+
+            participants.append({
+                "student_id": sid,
+                "usn": s.get("usn", ""),
+                "name": s.get("name", "Unknown"),
+                "branch": s.get("branch", ""),
+                "is_blocked": s.get("is_blocked", False),
+                "has_started": p is not None,
+                "current_round": p.get("current_round", 1) if p else 1,
+                "current_question_index": current_q_idx,
+                "rounds_completed": rounds_completed,
+                "is_completed": p.get("is_completed", False) if p else False,
+                "started_at": p.get("started_at") if p else None,
+                "completed_at": p.get("completed_at") if p else None,
+                "warnings": viol_counts.get(sid, 0),
+            })
+
+        # Sort: In-progress/completed first, by current round descending
+        participants.sort(key=lambda x: (
+            1 if x["has_started"] else 0,
+            1 if x["is_completed"] else 0,
+            x["current_round"]
+        ), reverse=True)
+
+        return {"students": participants}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_get_relay_students error: {e}")
+        return {"students": []}
+
+
+@router.post("/admin/force-unlock")
+async def admin_force_unlock(body: ForceUnlockRequest, _: bool = Depends(verify_admin)):
+    """Force unlock or advance a student to a specific round."""
+    try:
+        db = get_supabase()
+        now = datetime.now(timezone.utc).isoformat()
+
+        existing = db.table("tech_relay_progress") \
+            .select("*") \
+            .eq("student_id", body.student_id) \
+            .eq("relay_name", body.relay_name) \
+            .execute()
+
+        is_complete = body.next_round > 5
+
+        rounds_completed = []
+        for r in range(1, min(body.next_round, 6)):
+            rounds_completed.append({
+                "round": r,
+                "completed_at": now,
+                "attempts": 1,
+                "forced": True
+            })
+        rounds_completed.append({"_meta": True, "current_question_index": 0})
+
+        data = {
+            "student_id": body.student_id,
+            "relay_name": body.relay_name,
+            "current_round": 6 if is_complete else body.next_round,
+            "rounds_completed": json.dumps(rounds_completed),
+            "is_completed": is_complete,
+            "completed_at": now if is_complete else None,
+        }
+
+        if existing.data and len(existing.data) > 0:
+            db.table("tech_relay_progress").update(data).eq("id", existing.data[0]["id"]).execute()
+        else:
+            data["started_at"] = now
+            db.table("tech_relay_progress").insert(data).execute()
+
+        return {"success": True, "message": f"Unlocked Round {body.next_round} for student"}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_force_unlock error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/admin/reset-student")
+async def admin_reset_student(body: ResetStudentRequest, _: bool = Depends(verify_admin)):
+    """Reset all relay progress for a student so they can restart."""
+    try:
+        db = get_supabase()
+        db.table("tech_relay_progress") \
+            .delete() \
+            .eq("student_id", body.student_id) \
+            .eq("relay_name", body.relay_name) \
+            .execute()
+        return {"success": True, "message": "Student relay progress has been reset"}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_reset_student error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/admin/student/{student_id}")
+async def admin_remove_student(student_id: str, relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
+    """Remove student record from tech_relay_progress."""
+    try:
+        db = get_supabase()
+        db.table("tech_relay_progress") \
+            .delete() \
+            .eq("student_id", student_id) \
+            .eq("relay_name", relay_name) \
+            .execute()
+        return {"success": True, "message": "Student removed from relay"}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_remove_student error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/admin/leaderboard")
 async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
     """Get leaderboard of completed students."""
     try:
         db = get_supabase()
 
-        # Fetch all progress rows for this relay
         progress_result = db.table("tech_relay_progress") \
             .select("student_id, current_round, rounds_completed, is_completed, started_at, completed_at") \
             .eq("relay_name", relay_name) \
@@ -344,7 +634,6 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
         if not progress_result.data:
             return {"leaderboard": []}
 
-        # Fetch student names
         student_ids = [p["student_id"] for p in progress_result.data]
         students_result = db.table("students") \
             .select("id, usn, name, branch") \
@@ -357,9 +646,13 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
             student = students_map.get(p["student_id"], {})
             rounds_completed = p.get("rounds_completed", [])
             if isinstance(rounds_completed, str):
-                rounds_completed = json.loads(rounds_completed)
+                try:
+                    rounds_completed = json.loads(rounds_completed)
+                except Exception:
+                    rounds_completed = []
 
-            total_attempts = sum(r.get("attempts", 1) for r in rounds_completed)
+            clean_rc = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
+            total_attempts = sum(r.get("attempts", 1) for r in clean_rc)
 
             leaderboard.append({
                 "student_id": p["student_id"],
@@ -367,7 +660,7 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
                 "name": student.get("name", "Unknown"),
                 "branch": student.get("branch", ""),
                 "current_round": p["current_round"],
-                "rounds_completed": len(rounds_completed),
+                "rounds_completed": len(clean_rc),
                 "total_attempts": total_attempts,
                 "is_completed": p["is_completed"],
                 "started_at": p["started_at"],
@@ -378,3 +671,4 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
     except Exception as e:
         print(f"[TECH_RELAY] admin_leaderboard note: {e}")
         return {"leaderboard": []}
+

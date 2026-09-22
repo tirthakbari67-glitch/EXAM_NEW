@@ -119,17 +119,27 @@ function parseContent<T = Record<string, unknown>>(raw: unknown): T {
 
 // ── Round Renderers ──────────────────────────────────────────────
 
-function GadgetRound({ round, answer, setAnswer }: {
-  round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
-}) {
-  const content = parseContent<{ clues?: Array<{ letter: string; clue: string }> }>(round.content);
-  const clues = content?.clues || [];
+interface SubQuestionProps {
+  round: TechRelayRound;
+  subIndex: number;
+  answer: string;
+  setAnswer: (v: string) => void;
+}
+
+function GadgetRound({ round, subIndex, answer, setAnswer }: SubQuestionProps) {
+  const content = parseContent<{
+    questions?: Array<{ gadget_name?: string; clues?: Array<{ letter: string; clue: string }> }>;
+    clues?: Array<{ letter: string; clue: string }>;
+  }>(round.content);
+
+  const subQ = content?.questions && content.questions[subIndex] ? content.questions[subIndex] : content;
+  const clues = subQ?.clues || [];
 
   return (
     <>
       <div className={styles.cluesGrid}>
         {clues.map((c, i) => (
-          <div key={`clue-${round.round_number}-${i}`} className={styles.clueCard}>
+          <div key={`clue-${round.round_number}-${subIndex}-${i}`} className={styles.clueCard}>
             <div className={styles.clueLetter}>{c.letter}</div>
             <div className={styles.clueHint}>{c.clue}</div>
           </div>
@@ -149,20 +159,24 @@ function GadgetRound({ round, answer, setAnswer }: {
   );
 }
 
-function PuzzleRound({ round, answer, setAnswer }: {
-  round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
-}) {
-  const content = parseContent<{ problem_statement?: string; hint?: string }>(round.content);
+function PuzzleRound({ round, subIndex, answer, setAnswer }: SubQuestionProps) {
+  const content = parseContent<{
+    questions?: Array<{ problem_statement?: string; hint?: string }>;
+    problem_statement?: string;
+    hint?: string;
+  }>(round.content);
+
+  const subQ = content?.questions && content.questions[subIndex] ? content.questions[subIndex] : content;
 
   return (
     <>
       <div className={styles.puzzleStatement}>
-        {content?.problem_statement || "No puzzle configured"}
+        {subQ?.problem_statement || "No puzzle configured"}
       </div>
-      {content?.hint && (
+      {subQ?.hint && (
         <div className={styles.hintBox}>
           <span className={styles.hintIcon}>💡</span>
-          <span>{content.hint}</span>
+          <span>{subQ.hint}</span>
         </div>
       )}
       <div className={styles.inputGroup}>
@@ -179,26 +193,32 @@ function PuzzleRound({ round, answer, setAnswer }: {
   );
 }
 
-function DebugRound({ round, answer, setAnswer }: {
-  round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
-}) {
-  const content = parseContent<{ code?: string; bug_description?: string; hint?: string; language?: string }>(round.content);
+function DebugRound({ round, subIndex, answer, setAnswer }: SubQuestionProps) {
+  const content = parseContent<{
+    questions?: Array<{ code?: string; bug_description?: string; hint?: string; language?: string }>;
+    code?: string;
+    bug_description?: string;
+    hint?: string;
+    language?: string;
+  }>(round.content);
+
+  const subQ = content?.questions && content.questions[subIndex] ? content.questions[subIndex] : content;
 
   return (
     <>
       <div className={styles.codeBlock}>
-        <pre className={styles.codePre}>{content?.code || "// No code provided"}</pre>
+        <pre className={styles.codePre}>{subQ?.code || "// No code provided"}</pre>
       </div>
-      {content?.bug_description && (
+      {subQ?.bug_description && (
         <div className={styles.bugDesc}>
           <span>🐛</span>
-          <span>{content.bug_description}</span>
+          <span>{subQ.bug_description}</span>
         </div>
       )}
-      {content?.hint && (
+      {subQ?.hint && (
         <div className={styles.hintBox}>
           <span className={styles.hintIcon}>💡</span>
-          <span>{content.hint}</span>
+          <span>{subQ.hint}</span>
         </div>
       )}
       <div className={styles.inputGroup}>
@@ -262,24 +282,29 @@ function McqRound({ round, mcqAnswers, setMcqAnswers }: {
   );
 }
 
-function PasswordRound({ round, answer, setAnswer }: {
-  round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
-}) {
-  const content = parseContent<{ cipher_text?: string; cipher_type?: string; hint?: string }>(round.content);
+function PasswordRound({ round, subIndex, answer, setAnswer }: SubQuestionProps) {
+  const content = parseContent<{
+    questions?: Array<{ cipher_text?: string; cipher_type?: string; hint?: string }>;
+    cipher_text?: string;
+    cipher_type?: string;
+    hint?: string;
+  }>(round.content);
+
+  const subQ = content?.questions && content.questions[subIndex] ? content.questions[subIndex] : content;
 
   return (
     <>
       <div className={styles.cipherDisplay}>
         <p className={styles.cipherLabel}>Encrypted Message</p>
-        <p className={styles.cipherText}>{content?.cipher_text || "???"}</p>
-        {content?.cipher_type && (
-          <p className={styles.cipherType}>Cipher: {content.cipher_type}</p>
+        <p className={styles.cipherText}>{subQ?.cipher_text || "???"}</p>
+        {subQ?.cipher_type && (
+          <p className={styles.cipherType}>Cipher: {subQ.cipher_type}</p>
         )}
       </div>
-      {content?.hint && (
+      {subQ?.hint && (
         <div className={styles.hintBox}>
           <span className={styles.hintIcon}>💡</span>
-          <span>{content.hint}</span>
+          <span>{subQ.hint}</span>
         </div>
       )}
       <div className={styles.inputGroup}>
@@ -307,6 +332,7 @@ export default function TechRelayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeRound, setActiveRound] = useState(1);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   // Input states
   const [textAnswer, setTextAnswer] = useState("");
@@ -340,9 +366,10 @@ export default function TechRelayPage() {
       setRounds(roundsData);
       setProgress(progressData);
 
-      // Set active round to current progress
+      // Set active round and sub-question index to current progress
       const currentRound = progressData.current_round || 1;
       setActiveRound(Math.min(currentRound, 5));
+      setCurrentQuestionIndex(progressData.current_question_index || 0);
 
       // Init MCQ answers if round 4 is active
       const r4 = roundsData.find(r => r.round_number === 4);
@@ -393,32 +420,40 @@ export default function TechRelayPage() {
     }
 
     try {
-      const result = await submitTechRelayRound(activeRound, answer);
+      const result = await submitTechRelayRound(activeRound, answer, currentQuestionIndex);
 
       if (result.success) {
         setFeedback({ type: "success", message: result.message });
         setTextAnswer("");
 
-        if (result.is_completed) {
-          setShowConfetti(true);
-          // Reload progress
-          const updatedProgress = await fetchTechRelayProgress();
-          setProgress(updatedProgress);
-        } else if (result.next_round) {
-          // Move to next round after a short delay
-          setTimeout(async () => {
-            setActiveRound(result.next_round as number);
-            setFeedback(null);
-            setTextAnswer("");
-            setMcqAnswers(prev => prev.map(() => -1));
+        if (result.round_cleared === false) {
+          // Solved sub-question! Advance to next question in this round
+          const nextQ = result.next_question_index ?? (currentQuestionIndex + 1);
+          setCurrentQuestionIndex(nextQ);
+          setTimeout(() => setFeedback(null), 2500);
+        } else {
+          // Entire round cleared!
+          setCurrentQuestionIndex(0);
+
+          if (result.is_completed) {
+            setShowConfetti(true);
             const updatedProgress = await fetchTechRelayProgress();
             setProgress(updatedProgress);
-          }, 1500);
+          } else if (result.next_round) {
+            setTimeout(async () => {
+              setActiveRound(result.next_round as number);
+              setFeedback(null);
+              setTextAnswer("");
+              setMcqAnswers(prev => prev.map(() => -1));
+              const updatedProgress = await fetchTechRelayProgress();
+              setProgress(updatedProgress);
+            }, 1500);
+          }
         }
       } else {
         setFeedback({ type: "error", message: result.message });
       }
-    } catch (e) {
+    } catch {
       setFeedback({ type: "error", message: "Submission failed. Please try again." });
     } finally {
       setSubmitting(false);
@@ -669,21 +704,70 @@ export default function TechRelayPage() {
               </div>
             </div>
 
+            {/* Sub-Question Navigation / Tracker */}
+            {(() => {
+              const activeContent = parseContent<{ questions?: unknown[] }>(activeRoundConfig?.content);
+              const subQuestionsCount = activeContent?.questions && Array.isArray(activeContent.questions)
+                ? activeContent.questions.length
+                : 1;
+
+              if (subQuestionsCount <= 1) return null;
+
+              return (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  padding: "10px 16px",
+                  borderRadius: 12,
+                  marginBottom: 20,
+                  border: "1px solid rgba(255, 255, 255, 0.08)"
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc" }}>
+                    Question {currentQuestionIndex + 1} of {subQuestionsCount}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {Array.from({ length: subQuestionsCount }).map((_, idx) => (
+                      <div
+                        key={`subdot-${idx}`}
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: idx < currentQuestionIndex ? "rgba(52, 211, 153, 0.2)" : idx === currentQuestionIndex ? "var(--accent, #6366f1)" : "rgba(255,255,255,0.06)",
+                          color: idx < currentQuestionIndex ? "#34d399" : idx === currentQuestionIndex ? "#fff" : "rgba(255,255,255,0.4)",
+                          border: idx === currentQuestionIndex ? "1px solid #818cf8" : "none"
+                        }}
+                      >
+                        {idx < currentQuestionIndex ? "✓" : idx + 1}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Round-Specific Content */}
             {activeRoundConfig.round_type === "gadget" && (
-              <GadgetRound round={activeRoundConfig} answer={textAnswer} setAnswer={setTextAnswer} />
+              <GadgetRound round={activeRoundConfig} subIndex={currentQuestionIndex} answer={textAnswer} setAnswer={setTextAnswer} />
             )}
             {activeRoundConfig.round_type === "puzzle" && (
-              <PuzzleRound round={activeRoundConfig} answer={textAnswer} setAnswer={setTextAnswer} />
+              <PuzzleRound round={activeRoundConfig} subIndex={currentQuestionIndex} answer={textAnswer} setAnswer={setTextAnswer} />
             )}
             {activeRoundConfig.round_type === "debug" && (
-              <DebugRound round={activeRoundConfig} answer={textAnswer} setAnswer={setTextAnswer} />
+              <DebugRound round={activeRoundConfig} subIndex={currentQuestionIndex} answer={textAnswer} setAnswer={setTextAnswer} />
             )}
             {activeRoundConfig.round_type === "mcq" && (
               <McqRound round={activeRoundConfig} mcqAnswers={mcqAnswers} setMcqAnswers={setMcqAnswers} />
             )}
             {activeRoundConfig.round_type === "password" && (
-              <PasswordRound round={activeRoundConfig} answer={textAnswer} setAnswer={setTextAnswer} />
+              <PasswordRound round={activeRoundConfig} subIndex={currentQuestionIndex} answer={textAnswer} setAnswer={setTextAnswer} />
             )}
 
             {/* Submit Button */}
@@ -694,7 +778,20 @@ export default function TechRelayPage() {
                   onClick={handleSubmit}
                   disabled={submitting}
                 >
-                  {submitting ? "Checking..." : `Submit Round ${activeRound}`}
+                  {submitting
+                    ? "Checking..."
+                    : (() => {
+                        const activeContent = parseContent<{ questions?: unknown[] }>(activeRoundConfig?.content);
+                        const subCount = activeContent?.questions && Array.isArray(activeContent.questions)
+                          ? activeContent.questions.length
+                          : 1;
+                        if (subCount > 1) {
+                          return currentQuestionIndex + 1 === subCount
+                            ? `Submit Final Question for Round ${activeRound}`
+                            : `Submit Question ${currentQuestionIndex + 1} of ${subCount}`;
+                        }
+                        return `Submit Round ${activeRound}`;
+                      })()}
                   {!submitting && <span>→</span>}
                 </button>
               </div>

@@ -808,7 +808,8 @@ export interface TechRelayRound {
 
 export interface TechRelayProgress {
   current_round: number;
-  rounds_completed: Array<{ round: number; completed_at: string; attempts: number }>;
+  current_question_index: number;
+  rounds_completed: Array<{ round: number; completed_at: string; attempts: number; forced?: boolean; questions_solved?: number }>;
   is_completed: boolean;
   started_at: string | null;
   completed_at: string | null;
@@ -817,7 +818,10 @@ export interface TechRelayProgress {
 export interface TechRelaySubmitResult {
   success: boolean;
   message: string;
+  round_cleared?: boolean;
   next_round?: number | null;
+  next_question_index?: number;
+  total_questions?: number;
   is_completed?: boolean;
 }
 
@@ -833,11 +837,17 @@ export async function fetchTechRelayProgress(): Promise<TechRelayProgress> {
 export async function submitTechRelayRound(
   roundNumber: number,
   answer: string,
+  questionIndex: number = 0,
   relayName: string = "Tech Relay"
 ): Promise<TechRelaySubmitResult> {
   return apiFetch<TechRelaySubmitResult>("/tech-relay/submit-round", {
     method: "POST",
-    body: JSON.stringify({ round_number: roundNumber, answer, relay_name: relayName }),
+    body: JSON.stringify({
+      round_number: roundNumber,
+      answer,
+      question_index: questionIndex,
+      relay_name: relayName,
+    }),
   });
 }
 
@@ -865,6 +875,61 @@ export async function toggleTechRelay(relayName: string, isActive: boolean): Pro
   });
 }
 
+export interface TechRelayParticipant {
+  student_id: string;
+  usn: string;
+  name: string;
+  branch: string;
+  is_blocked: boolean;
+  has_started: boolean;
+  current_round: number;
+  current_question_index: number;
+  rounds_completed: Array<{ round: number; completed_at: string; attempts: number; forced?: boolean }>;
+  is_completed: boolean;
+  started_at: string | null;
+  completed_at: string | null;
+  warnings: number;
+}
+
+export async function fetchTechRelayAdminStudents(
+  relayName: string = "Tech Relay"
+): Promise<TechRelayParticipant[]> {
+  const data = await adminFetch<{ students: TechRelayParticipant[] }>(
+    `/tech-relay/admin/students?relay_name=${encodeURIComponent(relayName)}`
+  );
+  return data.students || [];
+}
+
+export async function forceUnlockTechRelay(
+  studentId: string,
+  nextRound: number,
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string }> {
+  return adminFetch<{ success: boolean; message: string }>("/tech-relay/admin/force-unlock", {
+    method: "POST",
+    body: JSON.stringify({ student_id: studentId, next_round: nextRound, relay_name: relayName }),
+  });
+}
+
+export async function resetTechRelayStudent(
+  studentId: string,
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string }> {
+  return adminFetch<{ success: boolean; message: string }>("/tech-relay/admin/reset-student", {
+    method: "POST",
+    body: JSON.stringify({ student_id: studentId, relay_name: relayName }),
+  });
+}
+
+export async function removeTechRelayStudent(
+  studentId: string,
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string }> {
+  return adminFetch<{ success: boolean; message: string }>(`/tech-relay/admin/student/${studentId}`, {
+    method: "DELETE",
+  });
+}
+
 export interface TechRelayLeaderboardEntry {
   student_id: string;
   usn: string;
@@ -886,4 +951,5 @@ export async function fetchTechRelayLeaderboard(
   );
   return data.leaderboard;
 }
+
 
