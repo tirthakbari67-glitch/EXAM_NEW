@@ -245,8 +245,17 @@ export default function DashboardPage() {
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
               )}
             </button>
-            <div className={styles.logoTitle}>
-              <AtomIcon />
+            <div className={styles.logoTitle} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img
+                src="/icon.png"
+                alt="Campus Nexus"
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  filter: "drop-shadow(0 0 10px rgba(0, 242, 255, 0.5))",
+                }}
+              />
               NEXUS <span className={styles.candidatePortalLabel}>Candidate Portal</span>
             </div>
           </div>

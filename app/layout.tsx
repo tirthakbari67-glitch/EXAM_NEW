@@ -2,9 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ExamGuard — Online Examination Portal",
+  title: "Campus Nexus — Secure Examination & Tech Arena",
   description:
-    "Secure, scalable online exam system for 266 concurrent students. Anti-cheat protected with real-time monitoring.",
+    "Secure, scalable online exam system and competitive tech portal with real-time monitoring and anti-cheat protection.",
+  icons: {
+    icon: [
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

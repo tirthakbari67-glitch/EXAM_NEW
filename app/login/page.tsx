@@ -368,9 +368,18 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className={styles.card}
       >
-        <svg className={styles.crest} viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-3.13 8.75-7 9.81-3.87-1.06-7-5.14-7-9.81V6.3l7-3.12z" />
-        </svg>
+        <img
+          src="/icon.png"
+          alt="Campus Nexus"
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: "50%",
+            marginBottom: 16,
+            filter: "drop-shadow(0 0 20px rgba(0, 242, 255, 0.45))",
+            border: "2px solid rgba(0, 242, 255, 0.3)",
+          }}
+        />
 
         <div className={styles.titleMain}>Campus Nexus</div>
         <h1 className={styles.titleSub}>Student Hub</h1>
