@@ -60,7 +60,14 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
             .eq("is_active", True) \
             .order("round_number") \
             .execute()
-        return {"rounds": result.data or []}
+        rounds = result.data or []
+        for r in rounds:
+            if isinstance(r.get("content"), str):
+                try:
+                    r["content"] = json.loads(r["content"])
+                except Exception:
+                    pass
+        return {"rounds": rounds}
     except Exception as e:
         print(f"[TECH_RELAY] Config fetch note: {e}")
         return {"rounds": []}
@@ -224,7 +231,14 @@ async def admin_get_config(_: bool = Depends(verify_admin)):
             .order("relay_name") \
             .order("round_number") \
             .execute()
-        return {"rounds": result.data or []}
+        rounds = result.data or []
+        for r in rounds:
+            if isinstance(r.get("content"), str):
+                try:
+                    r["content"] = json.loads(r["content"])
+                except Exception:
+                    pass
+        return {"rounds": rounds}
     except Exception as e:
         print(f"[TECH_RELAY] admin_get_config note: {e}")
         return {"rounds": []}

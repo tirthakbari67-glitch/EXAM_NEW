@@ -3,6 +3,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import AntiCheat from "@/components/AntiCheat";
+import { useFullscreen } from "@/hooks/useFullscreen";
 import {
   fetchTechRelayConfig,
   fetchTechRelayProgress,
@@ -100,12 +102,27 @@ function Confetti({ active }: { active: boolean }) {
   return <canvas ref={canvasRef} className={styles.confettiCanvas} />;
 }
 
+// ── Content Parser Helper ─────────────────────────────────────────
+function parseContent<T = Record<string, unknown>>(raw: unknown): T {
+  if (!raw) return {} as T;
+  if (typeof raw === "object") return raw as T;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return (typeof parsed === "string" ? JSON.parse(parsed) : parsed) as T;
+    } catch {
+      return {} as T;
+    }
+  }
+  return {} as T;
+}
+
 // ── Round Renderers ──────────────────────────────────────────────
 
 function GadgetRound({ round, answer, setAnswer }: {
   round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
 }) {
-  const content = round.content as { clues?: Array<{ letter: string; clue: string }> };
+  const content = parseContent<{ clues?: Array<{ letter: string; clue: string }> }>(round.content);
   const clues = content?.clues || [];
 
   return (
@@ -135,7 +152,7 @@ function GadgetRound({ round, answer, setAnswer }: {
 function PuzzleRound({ round, answer, setAnswer }: {
   round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
 }) {
-  const content = round.content as { problem_statement?: string; hint?: string };
+  const content = parseContent<{ problem_statement?: string; hint?: string }>(round.content);
 
   return (
     <>
@@ -165,7 +182,7 @@ function PuzzleRound({ round, answer, setAnswer }: {
 function DebugRound({ round, answer, setAnswer }: {
   round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
 }) {
-  const content = round.content as { code?: string; bug_description?: string; hint?: string; language?: string };
+  const content = parseContent<{ code?: string; bug_description?: string; hint?: string; language?: string }>(round.content);
 
   return (
     <>
@@ -203,7 +220,7 @@ function McqRound({ round, mcqAnswers, setMcqAnswers }: {
   mcqAnswers: number[];
   setMcqAnswers: (v: number[]) => void;
 }) {
-  const content = round.content as { questions?: Array<{ question: string; options: string[] }> };
+  const content = parseContent<{ questions?: Array<{ question: string; options: string[] }> }>(round.content);
   const questions = content?.questions || [];
 
   function handleSelect(qIndex: number, optionIndex: number) {
@@ -248,7 +265,7 @@ function McqRound({ round, mcqAnswers, setMcqAnswers }: {
 function PasswordRound({ round, answer, setAnswer }: {
   round: TechRelayRound; answer: string; setAnswer: (v: string) => void;
 }) {
-  const content = round.content as { cipher_text?: string; cipher_type?: string; hint?: string };
+  const content = parseContent<{ cipher_text?: string; cipher_type?: string; hint?: string }>(round.content);
 
   return (
     <>
@@ -295,10 +312,23 @@ export default function TechRelayPage() {
   const [textAnswer, setTextAnswer] = useState("");
   const [mcqAnswers, setMcqAnswers] = useState<number[]>([]);
 
+  // AntiCheat state
+  const [warningCount, setWarningCount] = useState(0);
+  const [isTerminated, setIsTerminated] = useState(false);
+  const { isFullscreen, enter: enterFullscreen } = useFullscreen();
+
   // Feedback
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  const handleAutoSubmit = useCallback(() => {
+    setIsTerminated(true);
+    setFeedback({
+      type: "error",
+      message: "⚠️ Challenge Terminated: Auto-submitted due to repeated security violations (tab switch, window blur, or unauthorized shortcuts)."
+    });
+  }, []);
 
   // ── Load Data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -317,7 +347,7 @@ export default function TechRelayPage() {
       // Init MCQ answers if round 4 is active
       const r4 = roundsData.find(r => r.round_number === 4);
       if (r4) {
-        const content = r4.content as { questions?: unknown[] };
+        const content = parseContent<{ questions?: unknown[] }>(r4.content);
         const qCount = content?.questions?.length || 0;
         setMcqAnswers(new Array(qCount).fill(-1));
       }
@@ -340,7 +370,7 @@ export default function TechRelayPage() {
 
   // ── Submit Handler ───────────────────────────────────────────
   async function handleSubmit() {
-    if (submitting) return;
+    if (submitting || isTerminated) return;
     setFeedback(null);
     setSubmitting(true);
 
@@ -491,6 +521,12 @@ export default function TechRelayPage() {
 
   return (
     <div className={styles.container}>
+      <AntiCheat
+        isSubmitted={isCompleted || isTerminated}
+        examName="Tech Relay"
+        onAutoSubmit={handleAutoSubmit}
+        onWarningUpdate={(count) => setWarningCount(count)}
+      />
       <Confetti active={showConfetti} />
 
       {/* Header */}
@@ -500,6 +536,48 @@ export default function TechRelayPage() {
         </button>
         <h1 className={styles.title}>Tech Relay</h1>
         <p className={styles.subtitle}>Complete all 5 rounds to conquer the challenge</p>
+
+        {/* Anti-Cheat Telemetry Badge */}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 14px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: 700,
+            background: warningCount > 0 ? "rgba(239, 68, 68, 0.15)" : "rgba(52, 211, 153, 0.1)",
+            border: warningCount > 0 ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(52, 211, 153, 0.3)",
+            color: warningCount > 0 ? "#f87171" : "#34d399",
+            letterSpacing: "0.3px"
+          }}>
+            <span>{warningCount > 0 ? "🚨" : "🛡️"}</span>
+            <span>{warningCount > 0 ? `STRIKE ${warningCount} OF 3` : "ANTI-CHEAT SHIELD ACTIVE"}</span>
+          </div>
+
+          {!isFullscreen && (
+            <button
+              onClick={() => enterFullscreen()}
+              style={{
+                background: "rgba(99, 102, 241, 0.15)",
+                border: "1px solid rgba(99, 102, 241, 0.4)",
+                color: "#a5b4fc",
+                padding: "5px 14px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "all 0.2s"
+              }}
+            >
+              <span>⛶</span> Enter Fullscreen
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Progress Bar */}
@@ -556,7 +634,22 @@ export default function TechRelayPage() {
       </div>
 
       {/* Round Content */}
-      {!isRoundAccessible || !activeRoundConfig ? (
+      {isTerminated ? (
+        <div className={styles.roundContainer}>
+          <div className={styles.roundCard} style={{ textAlign: "center", borderColor: "rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.05)" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🚫</div>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: "#f87171", marginBottom: 8 }}>
+              Challenge Terminated
+            </h2>
+            <p style={{ color: "rgba(255, 255, 255, 0.7)", maxWidth: 500, margin: "0 auto 20px", lineHeight: 1.6 }}>
+              The Tech Relay challenge has been automatically terminated due to repeated anti-cheat violations (tab switching, window blur, or prohibited shortcuts).
+            </p>
+            <button className={styles.submitBtn} style={{ background: "rgba(255, 255, 255, 0.1)", maxWidth: 260, margin: "0 auto" }} onClick={() => router.push("/dashboard")}>
+              ← Return to Dashboard
+            </button>
+          </div>
+        </div>
+      ) : !isRoundAccessible || !activeRoundConfig ? (
         <div className={styles.lockedOverlay}>
           <div className={styles.lockIcon}>🔒</div>
           <h2 className={styles.lockedTitle}>Round Locked</h2>
