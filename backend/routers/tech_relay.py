@@ -20,6 +20,7 @@ class RoundSubmission(BaseModel):
     relay_name: str = "Tech Relay"
 
 class RoundConfigCreate(BaseModel):
+    id: Optional[str] = None
     relay_name: str = "Tech Relay"
     round_number: int
     round_title: str
@@ -61,8 +62,8 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
             .execute()
         return {"rounds": result.data or []}
     except Exception as e:
-        print(f"[TECH_RELAY] Config fetch failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch relay config")
+        print(f"[TECH_RELAY] Config fetch note: {e}")
+        return {"rounds": []}
 
 
 @router.get("/progress")
@@ -85,8 +86,14 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "completed_at": None
         }
     except Exception as e:
-        print(f"[TECH_RELAY] Progress fetch failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch progress")
+        print(f"[TECH_RELAY] Progress fetch note: {e}")
+        return {
+            "current_round": 1,
+            "rounds_completed": [],
+            "is_completed": False,
+            "started_at": None,
+            "completed_at": None
+        }
 
 
 @router.post("/submit-round")
@@ -210,109 +217,150 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
 @router.get("/admin/config")
 async def admin_get_config(_: bool = Depends(verify_admin)):
     """Get all relay configs for admin management."""
-    db = get_supabase()
-    result = db.table("tech_relay_config") \
-        .select("*") \
-        .order("relay_name") \
-        .order("round_number") \
-        .execute()
-    return {"rounds": result.data or []}
+    try:
+        db = get_supabase()
+        result = db.table("tech_relay_config") \
+            .select("*") \
+            .order("relay_name") \
+            .order("round_number") \
+            .execute()
+        return {"rounds": result.data or []}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_get_config note: {e}")
+        return {"rounds": []}
 
 
 @router.post("/admin/config")
 async def admin_save_round(body: RoundConfigCreate, _: bool = Depends(verify_admin)):
     """Create or update a relay round config (upsert on relay_name + round_number)."""
-    db = get_supabase()
+    try:
+        db = get_supabase()
 
-    # Check if round exists
-    existing = db.table("tech_relay_config") \
-        .select("id") \
-        .eq("relay_name", body.relay_name) \
-        .eq("round_number", body.round_number) \
-        .execute()
-
-    data = body.model_dump()
-    data["content"] = json.dumps(data["content"]) if isinstance(data["content"], dict) else data["content"]
-
-    if existing.data and len(existing.data) > 0:
-        result = db.table("tech_relay_config") \
-            .update(data) \
-            .eq("id", existing.data[0]["id"]) \
-            .execute()
-    else:
-        result = db.table("tech_relay_config") \
-            .insert(data) \
+        # Check if round exists
+        existing = db.table("tech_relay_config") \
+            .select("id") \
+            .eq("relay_name", body.relay_name) \
+            .eq("round_number", body.round_number) \
             .execute()
 
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Failed to save round config")
+        data = body.model_dump()
+        target_id = data.pop("id", None)
 
-    return result.data[0]
+        # Content must be a dict for jsonb in postgrest
+        if isinstance(data.get("content"), str):
+            try:
+                data["content"] = json.loads(data["content"])
+            except Exception:
+                data["content"] = {}
+
+        if existing.data and len(existing.data) > 0:
+            row_id = existing.data[0]["id"]
+            result = db.table("tech_relay_config") \
+                .update(data) \
+                .eq("id", row_id) \
+                .execute()
+        elif target_id:
+            result = db.table("tech_relay_config") \
+                .update(data) \
+                .eq("id", target_id) \
+                .execute()
+        else:
+            result = db.table("tech_relay_config") \
+                .insert(data) \
+                .execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to save round: no data returned from database")
+
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        err_msg = str(e)
+        print(f"[TECH_RELAY] admin_save_round failed: {err_msg}")
+        if "tech_relay_config" in err_msg or "PGRST205" in err_msg or "does not exist" in err_msg:
+            raise HTTPException(
+                status_code=400,
+                detail="Database table 'tech_relay_config' does not exist yet! Please run migration_v17_tech_relay.sql in your Supabase SQL Editor."
+            )
+        raise HTTPException(status_code=500, detail=f"Database error: {err_msg}")
 
 
 @router.delete("/admin/config/{config_id}")
 async def admin_delete_round(config_id: str, _: bool = Depends(verify_admin)):
     """Delete a relay round config."""
-    db = get_supabase()
-    db.table("tech_relay_config").delete().eq("id", config_id).execute()
-    return {"status": "deleted"}
+    try:
+        db = get_supabase()
+        db.table("tech_relay_config").delete().eq("id", config_id).execute()
+        return {"status": "deleted"}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_delete_round failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/admin/toggle")
 async def admin_toggle_relay(body: RelayToggle, _: bool = Depends(verify_admin)):
     """Activate or deactivate all rounds for a relay."""
-    db = get_supabase()
-    db.table("tech_relay_config") \
-        .update({"is_active": body.is_active}) \
-        .eq("relay_name", body.relay_name) \
-        .execute()
-    return {"status": "active" if body.is_active else "inactive", "relay_name": body.relay_name}
+    try:
+        db = get_supabase()
+        db.table("tech_relay_config") \
+            .update({"is_active": body.is_active}) \
+            .eq("relay_name", body.relay_name) \
+            .execute()
+        return {"status": "active" if body.is_active else "inactive", "relay_name": body.relay_name}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_toggle_relay failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/admin/leaderboard")
 async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
     """Get leaderboard of completed students."""
-    db = get_supabase()
+    try:
+        db = get_supabase()
 
-    # Fetch all progress rows for this relay
-    progress_result = db.table("tech_relay_progress") \
-        .select("student_id, current_round, rounds_completed, is_completed, started_at, completed_at") \
-        .eq("relay_name", relay_name) \
-        .order("is_completed", desc=True) \
-        .order("completed_at") \
-        .execute()
+        # Fetch all progress rows for this relay
+        progress_result = db.table("tech_relay_progress") \
+            .select("student_id, current_round, rounds_completed, is_completed, started_at, completed_at") \
+            .eq("relay_name", relay_name) \
+            .order("is_completed", desc=True) \
+            .order("completed_at") \
+            .execute()
 
-    if not progress_result.data:
+        if not progress_result.data:
+            return {"leaderboard": []}
+
+        # Fetch student names
+        student_ids = [p["student_id"] for p in progress_result.data]
+        students_result = db.table("students") \
+            .select("id, usn, name, branch") \
+            .in_("id", student_ids) \
+            .execute()
+        students_map = {s["id"]: s for s in (students_result.data or [])}
+
+        leaderboard = []
+        for p in progress_result.data:
+            student = students_map.get(p["student_id"], {})
+            rounds_completed = p.get("rounds_completed", [])
+            if isinstance(rounds_completed, str):
+                rounds_completed = json.loads(rounds_completed)
+
+            total_attempts = sum(r.get("attempts", 1) for r in rounds_completed)
+
+            leaderboard.append({
+                "student_id": p["student_id"],
+                "usn": student.get("usn", ""),
+                "name": student.get("name", "Unknown"),
+                "branch": student.get("branch", ""),
+                "current_round": p["current_round"],
+                "rounds_completed": len(rounds_completed),
+                "total_attempts": total_attempts,
+                "is_completed": p["is_completed"],
+                "started_at": p["started_at"],
+                "completed_at": p["completed_at"],
+            })
+
+        return {"leaderboard": leaderboard}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_leaderboard note: {e}")
         return {"leaderboard": []}
-
-    # Fetch student names
-    student_ids = [p["student_id"] for p in progress_result.data]
-    students_result = db.table("students") \
-        .select("id, usn, name, branch") \
-        .in_("id", student_ids) \
-        .execute()
-    students_map = {s["id"]: s for s in (students_result.data or [])}
-
-    leaderboard = []
-    for p in progress_result.data:
-        student = students_map.get(p["student_id"], {})
-        rounds_completed = p.get("rounds_completed", [])
-        if isinstance(rounds_completed, str):
-            rounds_completed = json.loads(rounds_completed)
-
-        total_attempts = sum(r.get("attempts", 1) for r in rounds_completed)
-
-        leaderboard.append({
-            "student_id": p["student_id"],
-            "usn": student.get("usn", ""),
-            "name": student.get("name", "Unknown"),
-            "branch": student.get("branch", ""),
-            "current_round": p["current_round"],
-            "rounds_completed": len(rounds_completed),
-            "total_attempts": total_attempts,
-            "is_completed": p["is_completed"],
-            "started_at": p["started_at"],
-            "completed_at": p["completed_at"],
-        })
-
-    return {"leaderboard": leaderboard}

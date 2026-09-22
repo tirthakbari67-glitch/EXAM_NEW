@@ -52,6 +52,16 @@ CREATE POLICY "public_read_tech_relay_config" ON tech_relay_config
 ALTER TABLE tech_relay_progress DISABLE ROW LEVEL SECURITY;
 
 -- Updated_at trigger for config
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_tech_relay_config_updated_at ON tech_relay_config;
 CREATE TRIGGER update_tech_relay_config_updated_at
   BEFORE UPDATE ON tech_relay_config
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

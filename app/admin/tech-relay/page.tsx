@@ -112,6 +112,64 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
   },
 ];
 
+const MIGRATION_SQL = `-- ============================================================
+-- Migration V17: Tech Relay Tables
+-- Run in Supabase SQL Editor
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS tech_relay_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  relay_name TEXT NOT NULL DEFAULT 'Tech Relay',
+  is_active BOOLEAN DEFAULT false,
+  round_number INTEGER NOT NULL CHECK (round_number BETWEEN 1 AND 5),
+  round_title TEXT NOT NULL,
+  round_type TEXT NOT NULL CHECK (round_type IN ('gadget', 'puzzle', 'debug', 'mcq', 'password')),
+  content JSONB NOT NULL DEFAULT '{}',
+  correct_answer TEXT,
+  time_limit_seconds INTEGER DEFAULT 300,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(relay_name, round_number)
+);
+
+CREATE TABLE IF NOT EXISTS tech_relay_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  relay_name TEXT NOT NULL DEFAULT 'Tech Relay',
+  current_round INTEGER NOT NULL DEFAULT 1,
+  rounds_completed JSONB DEFAULT '[]',
+  is_completed BOOLEAN DEFAULT false,
+  started_at TIMESTAMPTZ DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  UNIQUE(student_id, relay_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tech_relay_config_relay ON tech_relay_config(relay_name);
+CREATE INDEX IF NOT EXISTS idx_tech_relay_progress_student ON tech_relay_progress(student_id);
+CREATE INDEX IF NOT EXISTS idx_tech_relay_progress_relay ON tech_relay_progress(relay_name);
+
+ALTER TABLE tech_relay_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tech_relay_progress ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "public_read_tech_relay_config" ON tech_relay_config;
+CREATE POLICY "public_read_tech_relay_config" ON tech_relay_config FOR SELECT USING (true);
+
+ALTER TABLE tech_relay_progress DISABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_tech_relay_config_updated_at ON tech_relay_config;
+CREATE TRIGGER update_tech_relay_config_updated_at
+  BEFORE UPDATE ON tech_relay_config
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+`;
+
 export default function TechRelayAdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"rounds" | "leaderboard">("rounds");
@@ -120,11 +178,18 @@ export default function TechRelayAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isActive, setIsActive] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
 
   // Editor Modal
   const [editingRound, setEditingRound] = useState<Partial<TechRelayRound> | null>(null);
   const [contentJson, setContentJson] = useState("");
   const [jsonError, setJsonError] = useState("");
+
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(MIGRATION_SQL);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 3000);
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -215,7 +280,12 @@ export default function TechRelayAdminPage() {
       setEditingRound(null);
       await loadData();
     } catch (err: any) {
-      alert("Failed to save round: " + (err?.message || err));
+      const msg = err?.detail || err?.message || String(err);
+      if (msg.includes("tech_relay_config") || msg.includes("does not exist") || msg.includes("PGRST205")) {
+        alert("⚠️ Database table 'tech_relay_config' does not exist in Supabase yet!\n\nPlease click '📋 Copy SQL Migration' in the top bar, paste it into your Supabase Dashboard SQL Editor, and click Run.\n\nThen try again.");
+      } else {
+        alert("Failed to save round: " + msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -251,7 +321,12 @@ export default function TechRelayAdminPage() {
       await loadData();
       alert("All 5 rounds successfully seeded!");
     } catch (err: any) {
-      alert("Failed to seed rounds: " + (err?.message || err));
+      const msg = err?.detail || err?.message || String(err);
+      if (msg.includes("tech_relay_config") || msg.includes("does not exist") || msg.includes("PGRST205")) {
+        alert("⚠️ Database table 'tech_relay_config' does not exist in Supabase yet!\n\nPlease click '📋 Copy SQL Migration' in the top bar, paste it into your Supabase Dashboard SQL Editor, and click Run.\n\nThen try again.");
+      } else {
+        alert("Failed to seed rounds: " + msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -274,6 +349,14 @@ export default function TechRelayAdminPage() {
             onClick={handleToggle}
           >
             {isActive ? "🟢 Relay Active (Public)" : "🔴 Relay Inactive"}
+          </button>
+
+          <button
+            className={styles.backButton}
+            onClick={handleCopySql}
+            title="Copy SQL to create database tables in Supabase"
+          >
+            {copiedSql ? "✅ Copied SQL!" : "📋 Copy SQL Migration"}
           </button>
 
           <button
@@ -304,7 +387,40 @@ export default function TechRelayAdminPage() {
 
       {/* ── Tab: Rounds ── */}
       {activeTab === "rounds" && (
-        <div className={styles.roundsGrid}>
+        <>
+          {rounds.length === 0 && (
+            <div style={{
+              background: "rgba(99, 102, 241, 0.08)",
+              border: "1px solid rgba(99, 102, 241, 0.25)",
+              borderRadius: 14,
+              padding: "16px 20px",
+              marginBottom: 24,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, color: "#a5b4fc", fontSize: 14, marginBottom: 4 }}>
+                  ⚡ First-Time Database Setup
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", maxWidth: 600 }}>
+                  If you haven't created the Tech Relay tables in Supabase yet, click <strong>Copy SQL Migration</strong> and paste it into your <strong>Supabase Dashboard → SQL Editor</strong>, then click <strong>✨ Seed Default Rounds</strong>!
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className={styles.backButton} onClick={handleCopySql}>
+                  {copiedSql ? "✅ Copied!" : "📋 Copy SQL Migration"}
+                </button>
+                <button className={styles.btnPrimary} style={{ padding: "8px 18px", fontSize: 13 }} onClick={handleSeedDefaults}>
+                  ✨ Seed Default Rounds
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.roundsGrid}>
           {[1, 2, 3, 4, 5].map((num) => {
             const round = rounds.find((r) => r.round_number === num);
             if (round) {
@@ -352,6 +468,7 @@ export default function TechRelayAdminPage() {
             );
           })}
         </div>
+        </>
       )}
 
       {/* ── Tab: Leaderboard ── */}
