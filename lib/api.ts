@@ -152,6 +152,17 @@ export async function verifyLoginOtp(usn: string, otp: string): Promise<LoginRes
   });
 }
 
+export async function googleLoginStudent(data: {
+  email: string;
+  name?: string;
+  avatar_url?: string;
+}): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function loginStudent(
   usn: string,
   password: string,

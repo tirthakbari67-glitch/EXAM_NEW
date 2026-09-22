@@ -5,7 +5,8 @@ from datetime import datetime, timezone, timedelta
 from models.schemas import (
     LoginRequest, LoginResponse, SupportRequestCreate,
     SendSignupOtpRequest, VerifySignupOtpRequest,
-    SendLoginOtpRequest, VerifyLoginOtpRequest
+    SendLoginOtpRequest, VerifyLoginOtpRequest,
+    GoogleLoginRequest
 )
 from core.security import verify_password, hash_password, create_access_token, get_current_student
 from core.config import get_settings
@@ -525,6 +526,66 @@ async def reset_session(request: LoginRequest):
     ).eq("id", student["id"]).execute()
     
     return {"success": True, "message": "Session reset successfully. You can now login."}
+
+@router.post("/google", response_model=LoginResponse, tags=["auth"])
+async def google_login(request: GoogleLoginRequest):
+    """Direct login or automatic signup for students using Google OAuth."""
+    email = request.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address from Google")
+    
+    db = get_supabase()
+    
+    # 1. Look up student by email (case-insensitive)
+    result = db.table("students").select("*").ilike("email", email).execute()
+    student = None
+    if result.data and len(result.data) > 0:
+        student = result.data[0]
+    else:
+        # Check if USN matches the email prefix
+        email_prefix = email.split("@")[0].upper()
+        usn_result = db.table("students").select("*").ilike("usn", email_prefix).execute()
+        if usn_result.data and len(usn_result.data) > 0:
+            student = usn_result.data[0]
+            try:
+                db.table("students").update({"email": email}).eq("id", student["id"]).execute()
+            except Exception:
+                pass
+        else:
+            # Create a new student record
+            student_name = request.name or email.split("@")[0].capitalize()
+            import uuid
+            new_student = {
+                "usn": email_prefix[:30],
+                "name": student_name,
+                "email": email,
+                "branch": "CS",
+                "year": "1st Year",
+                "password_hash": hash_password(str(uuid.uuid4())),
+                "is_active_session": False,
+            }
+            if request.avatar_url:
+                new_student["avatar_url"] = request.avatar_url
+            ins_res = db.table("students").insert(new_student).execute()
+            if not ins_res.data:
+                raise HTTPException(status_code=500, detail="Failed to initialize student profile for Google account")
+            student = ins_res.data[0]
+            
+    # Update avatar_url if provided and not present
+    if request.avatar_url and not student.get("avatar_url"):
+        try:
+            db.table("students").update({"avatar_url": request.avatar_url}).eq("id", student["id"]).execute()
+            student["avatar_url"] = request.avatar_url
+        except Exception:
+            pass
+
+    return await _build_login_response_for_student(
+        student,
+        req_name=request.name or student.get("name"),
+        req_email=email,
+        req_branch=student.get("branch", "CS"),
+        req_year=student.get("year", "1st Year")
+    )
     
 @router.post("/support", tags=["public"])
 async def submit_support_request(request: SupportRequestCreate):

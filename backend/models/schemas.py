@@ -59,6 +59,11 @@ class VerifyLoginOtpRequest(BaseModel):
     usn: str
     otp: str
 
+class GoogleLoginRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
 # ── Questions ─────────────────────────────────────────────────
 class QuestionOut(BaseModel):
     id: str
