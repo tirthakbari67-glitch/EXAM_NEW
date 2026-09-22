@@ -792,3 +792,98 @@ export async function resetFacultyStudentExam(id: string, examName: string): Pro
   if (!res.ok) throw new Error("Failed to reset student exam");
 }
 
+// ── Tech Relay API ──────────────────────────────────────────────
+
+export interface TechRelayRound {
+  id: string;
+  relay_name: string;
+  is_active: boolean;
+  round_number: number;
+  round_title: string;
+  round_type: "gadget" | "puzzle" | "debug" | "mcq" | "password";
+  content: Record<string, unknown>;
+  correct_answer?: string;
+  time_limit_seconds: number;
+}
+
+export interface TechRelayProgress {
+  current_round: number;
+  rounds_completed: Array<{ round: number; completed_at: string; attempts: number }>;
+  is_completed: boolean;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface TechRelaySubmitResult {
+  success: boolean;
+  message: string;
+  next_round?: number | null;
+  is_completed?: boolean;
+}
+
+export async function fetchTechRelayConfig(): Promise<TechRelayRound[]> {
+  const data = await apiFetch<{ rounds: TechRelayRound[] }>("/tech-relay/config");
+  return data.rounds;
+}
+
+export async function fetchTechRelayProgress(): Promise<TechRelayProgress> {
+  return apiFetch<TechRelayProgress>("/tech-relay/progress");
+}
+
+export async function submitTechRelayRound(
+  roundNumber: number,
+  answer: string,
+  relayName: string = "Tech Relay"
+): Promise<TechRelaySubmitResult> {
+  return apiFetch<TechRelaySubmitResult>("/tech-relay/submit-round", {
+    method: "POST",
+    body: JSON.stringify({ round_number: roundNumber, answer, relay_name: relayName }),
+  });
+}
+
+// Admin Tech Relay
+export async function fetchTechRelayAdminConfig(): Promise<TechRelayRound[]> {
+  const data = await adminFetch<{ rounds: TechRelayRound[] }>("/tech-relay/admin/config");
+  return data.rounds;
+}
+
+export async function saveTechRelayRound(round: Omit<TechRelayRound, "id"> & { id?: string }): Promise<TechRelayRound> {
+  return adminFetch<TechRelayRound>("/tech-relay/admin/config", {
+    method: "POST",
+    body: JSON.stringify(round),
+  });
+}
+
+export async function deleteTechRelayRound(configId: string): Promise<void> {
+  await adminFetch(`/tech-relay/admin/config/${configId}`, { method: "DELETE" });
+}
+
+export async function toggleTechRelay(relayName: string, isActive: boolean): Promise<void> {
+  await adminFetch("/tech-relay/admin/toggle", {
+    method: "PUT",
+    body: JSON.stringify({ relay_name: relayName, is_active: isActive }),
+  });
+}
+
+export interface TechRelayLeaderboardEntry {
+  student_id: string;
+  usn: string;
+  name: string;
+  branch: string;
+  current_round: number;
+  rounds_completed: number;
+  total_attempts: number;
+  is_completed: boolean;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export async function fetchTechRelayLeaderboard(
+  relayName: string = "Tech Relay"
+): Promise<TechRelayLeaderboardEntry[]> {
+  const data = await adminFetch<{ leaderboard: TechRelayLeaderboardEntry[] }>(
+    `/tech-relay/admin/leaderboard?relay_name=${encodeURIComponent(relayName)}`
+  );
+  return data.leaderboard;
+}
+

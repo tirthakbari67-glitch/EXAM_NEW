@@ -3,6 +3,7 @@
 // Trigger commit for Vercel deployment refresh
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import LiquidNavbar from "@/components/LiquidNavbar";
 import { supabase } from "@/lib/supabase";
@@ -1577,6 +1578,25 @@ export default function AdminPage() {
         </div>
 
         <div className={styles.headerRight}>
+          <Link
+            href="/admin/tech-relay"
+            className="btn btn-outline"
+            style={{
+              fontSize: 12,
+              padding: "6px 14px",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(99, 102, 241, 0.15)",
+              border: "1px solid rgba(99, 102, 241, 0.4)",
+              color: "#a5b4fc",
+              borderRadius: "8px",
+              fontWeight: 600,
+            }}
+          >
+            <span>🏁</span> Tech Relay
+          </Link>
           {activeTab === "monitor" && <ExportButton quizzes={quizzes} />}
           <button className="btn btn-outline" style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => setAuthed(false)}>
             Logout

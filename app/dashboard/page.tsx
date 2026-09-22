@@ -42,7 +42,7 @@ interface StudentInfo {
   examDurationMinutes: number;
 }
 
-type TabId = "home" | "profile" | "aptitude" | "programming" | "other" | "history" | "insights" | "pyhunt";
+type TabId = "home" | "profile" | "aptitude" | "programming" | "other" | "history" | "insights" | "pyhunt" | "techrelay";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -218,7 +218,7 @@ export default function DashboardPage() {
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: "home", label: "Home", icon: <HomeIcon /> },
-    // { id: "pyhunt", label: "PyHunt", icon: <PyHuntIcon /> },
+    { id: "techrelay", label: "Tech Relay", icon: <TechRelayIcon /> },
     { id: "aptitude", label: "Aptitude Test", icon: <AptitudeIcon /> },
     { id: "programming", label: "Programming", icon: <CodeIcon /> },
     { id: "other", label: "Other Quiz", icon: <OtherIcon /> },
@@ -280,7 +280,14 @@ export default function DashboardPage() {
               <button
                 key={tab.id}
                 className={`${styles.sidebarItem} ${activeTab === tab.id ? styles.sidebarItemActive : ""}`}
-                onClick={() => { setActiveTab(tab.id); setIsMenuOpen(false); }}
+                onClick={() => {
+                  if (tab.id === "techrelay") {
+                    router.push("/tech-relay");
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                  setIsMenuOpen(false);
+                }}
               >
                 {tab.icon}
                 {tab.label}
@@ -346,20 +353,21 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {/* ── PyHunt Event Spotlight ── */}
-                      {/* <div className={styles.eventSpotlight} onClick={() => setActiveTab("pyhunt")}>
+                      {/* ── Tech Relay Event Spotlight ── */}
+                      <div className={styles.eventSpotlight} onClick={() => router.push("/tech-relay")}>
                         <div className={styles.eventGlow} />
                         <div className={styles.eventContent}>
-                           <div className={styles.eventTag}>SPECIAL EVENT</div>
-                           <h3 className={styles.eventTitle}>🐍 PyHunt: Logic Treasure Hunt</h3>
-                           <p className={styles.eventSubtitle}>Master the orbital logic nodes to unlock the sacred geometry. Zero-latency crystalline execution.</p>
-                           <button className={styles.eventBtn}>JOIN PYHUNT</button>
+                           <div className={styles.eventTag} style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff' }}>FEATURED CHALLENGE</div>
+                           <h3 className={styles.eventTitle}>🏁 Tech Relay: 5-Round Gauntlet</h3>
+                           <p className={styles.eventSubtitle}>Sequential progression strictly gated by correct solutions. Clear Gadget clues, Logic puzzles, Bug debugging, Speed MCQs, and Crack the Vault password.</p>
+                           <button className={styles.eventBtn} style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff' }}>ENTER TECH RELAY</button>
                         </div>
                         <div className={styles.eventVisual}>
                            <div className={styles.orbitRing} />
                            <div className={styles.orbitRing} style={{ animationDelay: '-1s', opacity: 0.2 }} />
+                           <div style={{ fontSize: 44 }}>⚡</div>
                         </div>
-                      </div> */}
+                      </div>
 
                       <div className={styles.examsSection} style={{ marginTop: 24 }}>
                         {topExams.length > 0 ? topExams.map(exam => (
@@ -501,6 +509,15 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function TechRelayIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
   );
 }
 
