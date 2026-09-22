@@ -61,25 +61,25 @@ export default function LoginPage() {
   function saveStudentSession(data: LoginResponse) {
     clearExamStorage();
     localStorage.setItem("exam_token", data.access_token);
+    sessionStorage.setItem("exam_token", data.access_token);
     const resolvedUsn =
       usn.trim().toUpperCase() ||
       (data.email ? data.email.split("@")[0].toUpperCase() : "STUDENT");
-    localStorage.setItem(
-      "exam_student",
-      JSON.stringify({
-        id: data.student_id,
-        usn: resolvedUsn,
-        name: data.student_name,
-        email: data.email,
-        branch: data.branch,
-        examStartTime: data.exam_start_time,
-        examDurationMinutes: data.exam_duration_minutes,
-        examTitle: data.exam_title,
-        totalQuestions: data.total_questions,
-        avatarUrl: data.avatar_url,
-      })
-    );
-    router.push("/dashboard");
+    const studentData = {
+      id: data.student_id,
+      usn: resolvedUsn,
+      name: data.student_name,
+      email: data.email,
+      branch: data.branch,
+      examStartTime: data.exam_start_time,
+      examDurationMinutes: data.exam_duration_minutes,
+      examTitle: data.exam_title,
+      totalQuestions: data.total_questions,
+      avatarUrl: data.avatar_url,
+    };
+    localStorage.setItem("exam_student", JSON.stringify(studentData));
+    sessionStorage.setItem("exam_student", JSON.stringify(studentData));
+    window.location.href = "/dashboard";
   }
 
   async function processGoogleUser(userSession: any) {
@@ -94,8 +94,8 @@ export default function LoginPage() {
       userSession.user.user_metadata?.avatar_url ||
       userSession.user.user_metadata?.picture;
 
-    // Clean up query parameters (?code=...) from URL
-    if (typeof window !== "undefined" && window.location.search) {
+    // Clean up query parameters (?code=...) & hash from URL
+    if (typeof window !== "undefined") {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -131,9 +131,20 @@ export default function LoginPage() {
 
     async function checkOAuthSession() {
       try {
-        // 1. Check PKCE code in URL query string
         if (typeof window !== "undefined") {
           const urlParams = new URLSearchParams(window.location.search);
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          
+          // Check for OAuth error from provider
+          const urlError = urlParams.get("error_description") || urlParams.get("error") || hashParams.get("error_description") || hashParams.get("error");
+          if (urlError) {
+            console.error("OAuth redirect error:", urlError);
+            setError(urlError);
+            setLoading(false);
+            return;
+          }
+
+          // 1. Check PKCE code in URL query string
           const code = urlParams.get("code");
           if (code) {
             setLoading(true);

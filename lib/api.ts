@@ -40,9 +40,10 @@ async function apiFetch<T>(
 
     if (res.status === 401) {
       console.error(`[API] 401 Unauthorized for ${url}.`);
-      // DON'T redirect if we're on the exam page — this crashes the active exam
+      // DON'T violently kick the student to /login if they are on /dashboard or /exam
       const isExamPage = typeof window !== "undefined" && window.location.pathname.startsWith("/exam");
-      if (!isExamPage && typeof window !== "undefined") {
+      const isDashboardPage = typeof window !== "undefined" && window.location.pathname.startsWith("/dashboard");
+      if (!isExamPage && !isDashboardPage && typeof window !== "undefined") {
         sessionStorage.removeItem("exam_token");
         sessionStorage.removeItem("exam_student");
         localStorage.removeItem("exam_token");

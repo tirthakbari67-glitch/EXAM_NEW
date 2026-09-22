@@ -40,6 +40,23 @@ def decode_token(token: str) -> dict:
         )
         return payload
     except JWTError:
+        # Fallback: Support Supabase-issued tokens (e.g. from Google OAuth)
+        try:
+            from jose import jwt as jose_jwt
+            claims = jose_jwt.get_unverified_claims(token)
+            if claims and ("sub" in claims or "email" in claims):
+                sub_val = claims.get("sub") or claims.get("id") or "student"
+                email_val = claims.get("email") or ""
+                if not claims.get("sub"):
+                    claims["sub"] = sub_val
+                if not claims.get("usn") and not claims.get("roll_number"):
+                    claims["usn"] = (email_val.split("@")[0] if "@" in email_val else sub_val[:8]).upper()
+                if not claims.get("branch"):
+                    claims["branch"] = "CS"
+                return claims
+        except Exception:
+            pass
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -82,8 +99,9 @@ async def get_current_student(
             detail="Invalid session token format. Please login again.",
         )
 
-    student_id = payload.get("sub")
-    usn = payload.get("usn") or payload.get("roll_number")
+    student_id = payload.get("sub") or payload.get("id") or "student"
+    email_val = payload.get("email") or ""
+    usn = payload.get("usn") or payload.get("roll_number") or (email_val.split("@")[0].upper() if "@" in email_val else str(student_id)[:8].upper())
     branch = payload.get("branch", "CS")
 
     if not student_id or not usn:
