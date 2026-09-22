@@ -65,6 +65,40 @@ async def verify_admin(x_admin_secret: str = Header(...)):
 #  STUDENT ENDPOINTS
 # ══════════════════════════════════════════════════════════════════
 
+def get_student_assigned_r1_index(student_id: str, relay_name: str, total_questions: int, db) -> int:
+    """
+    Get or compute assigned Round 1 question index for a student.
+    Uses stored index in tech_relay_progress._meta if available.
+    Fallback: deterministic hash based on student_id to ensure consistency.
+    """
+    if total_questions <= 1:
+        return 0
+    try:
+        res = db.table("tech_relay_progress") \
+            .select("rounds_completed") \
+            .eq("student_id", student_id) \
+            .eq("relay_name", relay_name) \
+            .limit(1) \
+            .execute()
+        if res.data and len(res.data) > 0:
+            rounds_completed = res.data[0].get("rounds_completed", [])
+            if isinstance(rounds_completed, str):
+                try:
+                    rounds_completed = json.loads(rounds_completed)
+                except Exception:
+                    rounds_completed = []
+            for item in rounds_completed:
+                if isinstance(item, dict) and item.get("_meta"):
+                    if "assigned_r1_index" in item and item["assigned_r1_index"] is not None:
+                        return int(item["assigned_r1_index"]) % total_questions
+    except Exception as e:
+        print(f"[TECH_RELAY] get_assigned_r1_index note: {e}")
+
+    # Fallback deterministic hash
+    hash_val = sum(ord(c) for c in str(student_id))
+    return hash_val % total_questions
+
+
 @router.get("/config")
 async def get_relay_config(current: dict = Depends(get_current_student)):
     """Get active relay config with all rounds (strips correct answers for anti-cheat)."""
@@ -81,6 +115,7 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
         for r in rounds:
             r_copy = dict(r)
             r_copy.pop("correct_answer", None)
+            round_num = r_copy.get("round_number")
             content = r_copy.get("content")
             if isinstance(content, str):
                 try:
@@ -101,7 +136,21 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
                             clean_questions.append(qc)
                         else:
                             clean_questions.append(q)
-                    content_copy["questions"] = clean_questions
+
+                    # Special Rule for Round 1:
+                    # Each user gets ONLY ONE question assigned from the pool so different users get different questions!
+                    if round_num == 1 and len(clean_questions) > 1:
+                        assigned_idx = get_student_assigned_r1_index(
+                            student_id=current["student_id"],
+                            relay_name=r_copy.get("relay_name", "Tech Relay"),
+                            total_questions=len(clean_questions),
+                            db=db
+                        )
+                        content_copy["questions"] = [clean_questions[assigned_idx]]
+                        content_copy["assigned_question_index"] = assigned_idx
+                    else:
+                        content_copy["questions"] = clean_questions
+
                 r_copy["content"] = content_copy
             sanitized_rounds.append(r_copy)
 
@@ -219,11 +268,45 @@ async def start_relay(body: StartRelayRequest, current: dict = Depends(get_curre
             "started_at": row.get("started_at") or now
         }
 
+    # Determine assigned Round 1 question for this participant (round-robin among existing pool)
+    assigned_r1_index = 0
+    try:
+        count_res = db.table("tech_relay_progress") \
+            .select("id") \
+            .eq("relay_name", relay_name) \
+            .execute()
+        student_count = len(count_res.data) if (count_res.data and isinstance(count_res.data, list)) else 0
+
+        r1_cfg = db.table("tech_relay_config") \
+            .select("content") \
+            .eq("relay_name", relay_name) \
+            .eq("round_number", 1) \
+            .limit(1) \
+            .execute()
+        if r1_cfg.data and len(r1_cfg.data) > 0:
+            r1_content = r1_cfg.data[0].get("content", {})
+            if isinstance(r1_content, str):
+                try:
+                    r1_content = json.loads(r1_content)
+                except Exception:
+                    r1_content = {}
+            if isinstance(r1_content, dict) and "questions" in r1_content and isinstance(r1_content["questions"], list):
+                pool_size = len(r1_content["questions"])
+                if pool_size > 1:
+                    assigned_r1_index = student_count % pool_size
+    except Exception as e:
+        print(f"[TECH_RELAY] start_relay assignment note: {e}")
+        assigned_r1_index = sum(ord(c) for c in str(student_id)) % 5
+
     progress_data = {
         "student_id": student_id,
         "relay_name": relay_name,
         "current_round": 1,
-        "rounds_completed": json.dumps([{"_meta": True, "current_question_index": 0}]),
+        "rounds_completed": json.dumps([{
+            "_meta": True,
+            "assigned_r1_index": assigned_r1_index,
+            "current_question_index": 0
+        }]),
         "is_completed": False,
         "started_at": now,
         "completed_at": None,
@@ -307,9 +390,19 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
     is_correct = False
 
     if has_multi_questions:
-        if q_idx >= len(questions):
-            raise HTTPException(status_code=400, detail="Invalid question index for this round")
-        target_q = questions[q_idx]
+        # For Round 1, retrieve the student's assigned question index from the pool
+        if round_num == 1 and len(questions) > 1:
+            assigned_idx = get_student_assigned_r1_index(
+                student_id=student_id,
+                relay_name=relay_name,
+                total_questions=len(questions),
+                db=db
+            )
+            target_q = questions[assigned_idx]
+        else:
+            if q_idx >= len(questions):
+                raise HTTPException(status_code=400, detail="Invalid question index for this round")
+            target_q = questions[q_idx]
 
         if round_type == "mcq":
             expected = target_q.get("correct")
@@ -328,7 +421,10 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             return {"success": False, "message": "Incorrect answer. Try again!"}
 
         # If correct, check if more questions remain in this round
-        if q_idx + 1 < len(questions):
+        # Special rule for Round 1: Solving the assigned single question clears Round 1 immediately!
+        if round_num == 1:
+            pass  # Advance directly to clearing Round 1 below
+        elif q_idx + 1 < len(questions):
             next_q_idx = q_idx + 1
             now = datetime.now(timezone.utc).isoformat()
             rounds_completed = progress.get("rounds_completed", []) if progress else []
@@ -338,8 +434,10 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
                 except Exception:
                     rounds_completed = []
 
+            meta_info = next((r for r in rounds_completed if isinstance(r, dict) and r.get("_meta")), {})
             rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
-            rounds_completed.append({"_meta": True, "current_question_index": next_q_idx})
+            meta_info["current_question_index"] = next_q_idx
+            rounds_completed.append(meta_info)
 
             progress_data = {
                 "student_id": student_id,
@@ -392,6 +490,7 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         except Exception:
             rounds_completed = []
 
+    meta_info = next((r for r in rounds_completed if isinstance(r, dict) and r.get("_meta")), {})
     rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
 
     existing_entry = next((r for r in rounds_completed if r.get("round") == round_num), None)
@@ -402,11 +501,12 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         "round": round_num,
         "completed_at": now,
         "attempts": attempts,
-        "questions_solved": len(questions) if has_multi_questions else 1
+        "questions_solved": 1 if round_num == 1 else (len(questions) if has_multi_questions else 1)
     })
 
-    # Reset question index for next round
-    rounds_completed.append({"_meta": True, "current_question_index": 0})
+    # Reset question index for next round while preserving meta (assigned_r1_index)
+    meta_info["current_question_index"] = 0
+    rounds_completed.append(meta_info)
 
     next_round = round_num + 1
     is_relay_complete = round_num >= 5
