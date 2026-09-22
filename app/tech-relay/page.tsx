@@ -8,6 +8,7 @@ import { useFullscreen } from "@/hooks/useFullscreen";
 import {
   fetchTechRelayConfig,
   fetchTechRelayProgress,
+  startTechRelay,
   submitTechRelayRound,
   type TechRelayRound,
   type TechRelayProgress,
@@ -343,6 +344,11 @@ export default function TechRelayPage() {
   const [isTerminated, setIsTerminated] = useState(false);
   const { isFullscreen, enter: enterFullscreen } = useFullscreen();
 
+  // Start Gate state (code: "Meet")
+  const [startCode, setStartCode] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState("");
+
   // Feedback
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -355,6 +361,39 @@ export default function TechRelayPage() {
       message: "⚠️ Challenge Terminated: Auto-submitted due to repeated security violations (tab switch, window blur, or unauthorized shortcuts)."
     });
   }, []);
+
+  const handleStartRelay = async () => {
+    if (!startCode.trim() || starting) return;
+    setStartError("");
+    setStarting(true);
+    try {
+      const res = await startTechRelay(startCode.trim());
+      if (res.success) {
+        setProgress((prev) => ({
+          current_round: res.current_round || 1,
+          current_question_index: 0,
+          rounds_completed: prev?.rounds_completed || [],
+          is_completed: res.is_completed || false,
+          started_at: res.started_at,
+          completed_at: prev?.completed_at || null,
+        }));
+        setActiveRound(res.current_round || 1);
+        setCurrentQuestionIndex(0);
+        try {
+          enterFullscreen();
+        } catch {
+          // ignore
+        }
+      } else {
+        setStartError(res.message || "Failed to start challenge");
+      }
+    } catch (err: any) {
+      const msg = err?.detail || err?.message || "Invalid start code. Please enter 'Meet' to start.";
+      setStartError(msg);
+    } finally {
+      setStarting(false);
+    }
+  };
 
   // ── Load Data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -545,6 +584,74 @@ export default function TechRelayPage() {
           <button className={styles.submitBtn} onClick={() => router.push("/dashboard")}>
             ← Return to Dashboard
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Start Code Gate ──────────────────────────────────────────
+  const hasStarted = Boolean(
+    progress?.started_at ||
+    (progress?.rounds_completed && progress.rounds_completed.length > 0) ||
+    (progress?.current_round && progress.current_round > 1)
+  );
+
+  if (!hasStarted) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
+            ← Dashboard
+          </button>
+        </div>
+
+        <div className={styles.startGateCard}>
+          <div className={styles.startGateIcon}>🏁</div>
+          <h1 className={styles.startGateTitle}>Tech Relay Challenge Gate</h1>
+          <p className={styles.startGateSubtitle}>
+            Enter the tournament access code to unlock Round 1 and begin the challenge.
+          </p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleStartRelay();
+            }}
+            style={{ width: "100%", maxWidth: 360, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <input
+              type="text"
+              placeholder="Enter Start Code..."
+              value={startCode}
+              onChange={(e) => {
+                setStartCode(e.target.value);
+                if (startError) setStartError("");
+              }}
+              className={styles.startGateInput}
+              autoFocus
+              autoComplete="off"
+              disabled={starting}
+            />
+
+            {startError && (
+              <div className={`${styles.feedback} ${styles.feedbackError}`} style={{ margin: "0 auto", width: "100%" }}>
+                <span>❌</span>
+                <span>{startError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className={styles.startGateBtn}
+              disabled={starting || !startCode.trim()}
+            >
+              {starting ? "Verifying..." : "🚀 Unlock & Start Challenge"}
+            </button>
+          </form>
+
+          <div style={{ marginTop: 24, padding: "12px 18px", borderRadius: 10, background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.07)", fontSize: 12, color: "rgba(255, 255, 255, 0.4)" }}>
+            ℹ️ Entering the start code will record your official entry on the tournament live monitor and start your challenge timer.
+          </div>
         </div>
       </div>
     );

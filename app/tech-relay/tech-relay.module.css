@@ -746,3 +746,88 @@
   .progressDot { width: 36px; height: 36px; font-size: 14px; }
   .backButton { padding: 6px 10px; font-size: 12px; }
 }
+
+/* ── Start Gate Card ─────────────────────────────────────────── */
+.startGateCard {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 48px 32px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  max-width: 520px;
+  margin: 40px auto;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: fadeSlideUp 0.4s ease;
+}
+
+.startGateIcon {
+  font-size: 56px;
+  margin-bottom: 16px;
+  display: inline-block;
+  filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.4));
+}
+
+.startGateTitle {
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+
+.startGateSubtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 28px;
+  line-height: 1.5;
+}
+
+.startGateInput {
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.startGateInput:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.startGateBtn {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+}
+
+.startGateBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
+}
+
+.startGateBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+

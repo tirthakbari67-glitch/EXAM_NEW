@@ -44,6 +44,11 @@ class ResetStudentRequest(BaseModel):
     student_id: str
     relay_name: str = "Tech Relay"
 
+class StartRelayRequest(BaseModel):
+    start_code: str
+    relay_name: str = "Tech Relay"
+
+
 
 # ── Admin Dependency ─────────────────────────────────────────────
 
@@ -164,6 +169,87 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "started_at": None,
             "completed_at": None
         }
+
+
+@router.post("/start")
+async def start_relay(body: StartRelayRequest, current: dict = Depends(get_current_student)):
+    """Start Tech Relay by verifying access code ('Meet') and initializing student progress."""
+    db = get_supabase()
+    student_id = current["student_id"]
+    relay_name = body.relay_name
+    submitted_code = body.start_code.strip()
+
+    # Validate start code ("Meet", case-insensitive)
+    if submitted_code.lower() != "meet":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect Start Code! Please enter 'Meet' to start the challenge."
+        )
+
+    # Check if relay is active
+    active_check = db.table("tech_relay_config") \
+        .select("is_active") \
+        .eq("relay_name", relay_name) \
+        .eq("is_active", True) \
+        .limit(1) \
+        .execute()
+
+    if not active_check.data or len(active_check.data) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tech Relay is currently inactive. Please wait for the admin to activate it."
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Check existing progress
+    existing = db.table("tech_relay_progress") \
+        .select("*") \
+        .eq("student_id", student_id) \
+        .eq("relay_name", relay_name) \
+        .execute()
+
+    if existing.data and len(existing.data) > 0:
+        row = existing.data[0]
+        return {
+            "success": True,
+            "message": "Welcome back to Tech Relay!",
+            "current_round": row.get("current_round", 1),
+            "is_completed": row.get("is_completed", False),
+            "started_at": row.get("started_at") or now
+        }
+
+    progress_data = {
+        "student_id": student_id,
+        "relay_name": relay_name,
+        "current_round": 1,
+        "rounds_completed": json.dumps([{"_meta": True, "current_question_index": 0}]),
+        "is_completed": False,
+        "started_at": now,
+        "completed_at": None,
+    }
+
+    insert_res = db.table("tech_relay_progress").insert(progress_data).execute()
+    if not insert_res.data:
+        raise HTTPException(status_code=500, detail="Failed to initialize relay progress")
+
+    try:
+        db.table("exam_status").upsert({
+            "student_id": student_id,
+            "exam_name": "Tech Relay",
+            "status": "in_progress",
+            "started_at": now,
+        }).execute()
+    except Exception as e:
+        print(f"[TECH_RELAY] exam_status note: {e}")
+
+    return {
+        "success": True,
+        "message": "Start Code verified! Welcome to Tech Relay.",
+        "current_round": 1,
+        "is_completed": False,
+        "started_at": now
+    }
 
 
 @router.post("/submit-round")
@@ -464,21 +550,37 @@ async def admin_toggle_relay(body: RelayToggle, _: bool = Depends(verify_admin))
 
 
 @router.get("/admin/students")
-async def admin_get_relay_students(relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
-    """Fetch all students with their Tech Relay progress, anti-cheat strikes, and live status."""
+async def admin_get_relay_students(
+    relay_name: str = "Tech Relay",
+    include_all: bool = False,
+    _: bool = Depends(verify_admin)
+):
+    """Fetch students for Tech Relay live observer. Defaults to only students who have started."""
     try:
         db = get_supabase()
 
-        # 1. Fetch all students
-        students_res = db.table("students").select("id, usn, name, branch, is_blocked").execute()
-        students_list = students_res.data or []
-
-        # 2. Fetch all progress for this relay
+        # 1. Fetch progress for this relay
         progress_res = db.table("tech_relay_progress") \
             .select("*") \
             .eq("relay_name", relay_name) \
             .execute()
-        progress_map = {p["student_id"]: p for p in (progress_res.data or [])}
+        progress_list = progress_res.data or []
+        progress_map = {p["student_id"]: p for p in progress_list}
+
+        if not include_all and not progress_map:
+            return {"students": []}
+
+        # 2. Fetch student profiles
+        if include_all:
+            students_res = db.table("students").select("id, usn, name, branch, is_blocked").execute()
+            students_list = students_res.data or []
+        else:
+            student_ids = list(progress_map.keys())
+            students_res = db.table("students") \
+                .select("id, usn, name, branch, is_blocked") \
+                .in_("id", student_ids) \
+                .execute()
+            students_list = students_res.data or []
 
         # 3. Fetch violations count for strikes
         try:
@@ -495,6 +597,9 @@ async def admin_get_relay_students(relay_name: str = "Tech Relay", _: bool = Dep
         for s in students_list:
             sid = s["id"]
             p = progress_map.get(sid)
+
+            if not include_all and not p:
+                continue
 
             rounds_completed = []
             current_q_idx = 0
@@ -527,7 +632,7 @@ async def admin_get_relay_students(relay_name: str = "Tech Relay", _: bool = Dep
                 "warnings": viol_counts.get(sid, 0),
             })
 
-        # Sort: In-progress/completed first, by current round descending
+        # Sort: Completed first, then by current round descending
         participants.sort(key=lambda x: (
             1 if x["has_started"] else 0,
             1 if x["is_completed"] else 0,

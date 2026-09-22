@@ -834,6 +834,16 @@ export async function fetchTechRelayProgress(): Promise<TechRelayProgress> {
   return apiFetch<TechRelayProgress>("/tech-relay/progress");
 }
 
+export async function startTechRelay(
+  startCode: string,
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string; current_round: number; is_completed: boolean; started_at: string }> {
+  return apiFetch("/tech-relay/start", {
+    method: "POST",
+    body: JSON.stringify({ start_code: startCode, relay_name: relayName }),
+  });
+}
+
 export async function submitTechRelayRound(
   roundNumber: number,
   answer: string,
@@ -892,10 +902,11 @@ export interface TechRelayParticipant {
 }
 
 export async function fetchTechRelayAdminStudents(
-  relayName: string = "Tech Relay"
+  relayName: string = "Tech Relay",
+  includeAll: boolean = false
 ): Promise<TechRelayParticipant[]> {
   const data = await adminFetch<{ students: TechRelayParticipant[] }>(
-    `/tech-relay/admin/students?relay_name=${encodeURIComponent(relayName)}`
+    `/tech-relay/admin/students?relay_name=${encodeURIComponent(relayName)}&include_all=${includeAll}`
   );
   return data.students || [];
 }

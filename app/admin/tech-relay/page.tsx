@@ -214,6 +214,7 @@ export default function TechRelayAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRound, setFilterRound] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [showAllRegistered, setShowAllRegistered] = useState(false);
 
   // Force Unlock Modal
   const [forceUnlockStudent, setForceUnlockStudent] = useState<TechRelayParticipant | null>(null);
@@ -244,7 +245,7 @@ export default function TechRelayAdminPage() {
       const [roundsData, lbData, studentsData] = await Promise.all([
         fetchTechRelayAdminConfig(),
         fetchTechRelayLeaderboard("Tech Relay").catch(() => []),
-        fetchTechRelayAdminStudents("Tech Relay").catch(() => []),
+        fetchTechRelayAdminStudents("Tech Relay", showAllRegistered).catch(() => []),
       ]);
       setRounds(roundsData || []);
       setLeaderboard(lbData || []);
@@ -257,19 +258,20 @@ export default function TechRelayAdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showAllRegistered]);
 
-  const refreshObserver = useCallback(async () => {
+  const refreshObserver = useCallback(async (overrideAll?: boolean) => {
     try {
       setObserverLoading(true);
-      const studentsData = await fetchTechRelayAdminStudents("Tech Relay");
+      const includeAll = typeof overrideAll === "boolean" ? overrideAll : showAllRegistered;
+      const studentsData = await fetchTechRelayAdminStudents("Tech Relay", includeAll);
       setParticipants(studentsData || []);
     } catch (err) {
       console.error("Failed to refresh observer:", err);
     } finally {
       setObserverLoading(false);
     }
-  }, []);
+  }, [showAllRegistered]);
 
   useEffect(() => {
     loadData();
@@ -573,10 +575,11 @@ export default function TechRelayAdminPage() {
   };
 
   // ── Observer Statistics ───────────────────────────────────────
-  const totalStudents = participants.length;
+  const startedParticipants = participants.filter((p) => p.has_started);
+  const totalStudents = showAllRegistered ? participants.length : startedParticipants.length;
   const activeStudents = participants.filter((p) => p.has_started && !p.is_completed).length;
   const completedStudents = participants.filter((p) => p.is_completed).length;
-  const flaggedStudents = participants.filter((p) => p.warnings > 0).length;
+  const flaggedStudents = (showAllRegistered ? participants : startedParticipants).filter((p) => p.warnings > 0).length;
 
   const roundCounts = {
     r1: participants.filter((p) => p.has_started && !p.is_completed && p.current_round === 1).length,
@@ -589,6 +592,9 @@ export default function TechRelayAdminPage() {
 
   // Filter participants
   const filteredParticipants = participants.filter((p) => {
+    // Only show started contestants unless admin toggles to show all registered accounts
+    if (!showAllRegistered && !p.has_started) return false;
+
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -651,7 +657,7 @@ export default function TechRelayAdminPage() {
               className={`${styles.tab} ${activeTab === "observer" ? styles.tabActive : ""}`}
               onClick={() => setActiveTab("observer")}
             >
-              🏃 Live Monitor ({participants.length})
+              🏃 Live Monitor ({showAllRegistered ? participants.length : startedParticipants.length})
             </button>
             <button
               className={`${styles.tab} ${activeTab === "rounds" ? styles.tabActive : ""}`}
@@ -677,7 +683,7 @@ export default function TechRelayAdminPage() {
           {/* Top Metrics Row */}
           <div className={styles.metricsGrid}>
             <div className={styles.metricCard}>
-              <div className={styles.metricLabel}>Total Students</div>
+              <div className={styles.metricLabel}>{showAllRegistered ? "Total Accounts" : "Started Contestants"}</div>
               <div className={styles.metricValue}>{totalStudents}</div>
             </div>
             <div className={styles.metricCard}>
@@ -707,7 +713,7 @@ export default function TechRelayAdminPage() {
               <button
                 className={styles.backButton}
                 style={{ padding: "4px 12px", fontSize: 11 }}
-                onClick={refreshObserver}
+                onClick={() => refreshObserver()}
                 disabled={observerLoading}
               >
                 {observerLoading ? "Syncing..." : "🔄 Refresh"}
@@ -809,12 +815,46 @@ export default function TechRelayAdminPage() {
               <option value="completed">Completed</option>
               <option value="flagged">Flagged / Strikes</option>
             </select>
+
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showAllRegistered;
+                setShowAllRegistered(next);
+                refreshObserver(next);
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "10px",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                border: showAllRegistered ? "1px solid rgba(251, 191, 36, 0.4)" : "1px solid rgba(99, 102, 241, 0.4)",
+                background: showAllRegistered ? "rgba(251, 191, 36, 0.12)" : "rgba(99, 102, 241, 0.15)",
+                color: showAllRegistered ? "#fbbf24" : "#a5b4fc",
+                whiteSpace: "nowrap",
+              }}
+              title="Toggle between showing only active contestants and all database accounts"
+            >
+              {showAllRegistered ? "👥 Showing All Accounts" : "⚡ Started Only (Code: Meet)"}
+            </button>
           </div>
 
           {/* Student Progress Table */}
           <div style={{ overflowX: "auto" }}>
             {filteredParticipants.length === 0 ? (
-              <div className={styles.emptyState}>No students match the current filter.</div>
+              <div className={styles.emptyState}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>🏁</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: "#fff", marginBottom: 6 }}>
+                  No Contestants Have Started Yet
+                </div>
+                <p style={{ maxWidth: 460, margin: "0 auto", fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+                  Only students who enter the start code (<strong>Meet</strong>) on their challenge screen will appear here in real-time.
+                </p>
+              </div>
             ) : (
               <table className={styles.observerTable}>
                 <thead>
