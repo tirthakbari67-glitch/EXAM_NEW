@@ -88,11 +88,20 @@ def _build_html_email(otp: str, purpose_text: str, name: str) -> str:
 
 def _send_smtp_sync(to_email: str, subject: str, html_body: str) -> bool:
     """Synchronous SMTP mail delivery with error handling."""
-    if not settings.smtp_host or not settings.smtp_user:
+    smtp_user = settings.smtp_user.strip()
+    raw_pass = (getattr(settings, "smtp_password", "") or getattr(settings, "smtp_pass", "") or "").strip()
+    # Google App Passwords have 16 characters often formatted with spaces (e.g. "xxxx xxxx xxxx xxxx")
+    smtp_pass = raw_pass.replace(" ", "")
+
+    smtp_host = settings.smtp_host.strip()
+    if not smtp_host and "gmail.com" in smtp_user:
+        smtp_host = "smtp.gmail.com"
+
+    if not smtp_host or not smtp_user or not smtp_pass:
         return False
 
     msg = MIMEMultipart("alternative")
-    sender_email = settings.smtp_from_email or settings.smtp_user
+    sender_email = settings.smtp_from_email.strip() or smtp_user
     sender_name = settings.smtp_from_name or "Campus Nexus"
     msg["From"] = f"{sender_name} <{sender_email}>"
     msg["To"] = to_email
@@ -104,15 +113,16 @@ def _send_smtp_sync(to_email: str, subject: str, html_body: str) -> bool:
     try:
         if settings.smtp_port == 465:
             context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, context=context, timeout=12) as server:
-                server.login(settings.smtp_user, settings.smtp_password)
+            with smtplib.SMTP_SSL(smtp_host, settings.smtp_port, context=context, timeout=12) as server:
+                server.login(smtp_user, smtp_pass)
                 server.sendmail(sender_email, [to_email], msg.as_string())
         else:
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=12) as server:
+            with smtplib.SMTP(smtp_host, settings.smtp_port, timeout=12) as server:
                 if settings.smtp_use_tls:
                     server.starttls(context=ssl.create_default_context())
-                server.login(settings.smtp_user, settings.smtp_password)
+                server.login(smtp_user, smtp_pass)
                 server.sendmail(sender_email, [to_email], msg.as_string())
+        print(f"[EMAIL_SERVICE] Successfully dispatched email to {to_email} via {smtp_host}")
         return True
     except Exception as e:
         print(f"[EMAIL_SERVICE] SMTP send error to {to_email}: {e}")
