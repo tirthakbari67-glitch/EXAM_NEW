@@ -100,6 +100,58 @@ export async function resetSession(usn: string, password: string): Promise<void>
   });
 }
 
+export interface SendOtpResult {
+  success: boolean;
+  message: string;
+  email?: string;
+  email_required?: boolean;
+  masked_email?: string;
+  expires_in_seconds?: number;
+}
+
+export async function sendSignupOtp(data: {
+  usn: string;
+  email: string;
+  name: string;
+  password: string;
+  branch?: string;
+  year?: string;
+}): Promise<SendOtpResult> {
+  return apiFetch<SendOtpResult>("/auth/send-signup-otp", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function verifySignupOtp(data: {
+  usn: string;
+  email: string;
+  otp: string;
+  name: string;
+  password: string;
+  branch?: string;
+  year?: string;
+}): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/auth/verify-signup-otp", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function sendLoginOtp(usn: string, password: string): Promise<SendOtpResult> {
+  return apiFetch<SendOtpResult>("/auth/send-login-otp", {
+    method: "POST",
+    body: JSON.stringify({ usn, password }),
+  });
+}
+
+export async function verifyLoginOtp(usn: string, otp: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/auth/verify-login-otp", {
+    method: "POST",
+    body: JSON.stringify({ usn, otp }),
+  });
+}
+
 export async function loginStudent(
   usn: string,
   password: string,

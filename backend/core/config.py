@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     # Exam
     exam_duration_minutes: int = 60
 
+    # Email / SMTP
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "Campus Nexus"
+    smtp_use_tls: bool = True
+    otp_expire_minutes: int = 10
+
     # CORS
     allowed_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:5173"
 

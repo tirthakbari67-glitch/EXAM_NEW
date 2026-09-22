@@ -4,7 +4,15 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LazyMotion, domAnimation, m, AnimatePresence } from "framer-motion";
-import { loginStudent, submitSupportRequest } from "@/lib/api";
+import {
+  loginStudent,
+  submitSupportRequest,
+  sendSignupOtp,
+  verifySignupOtp,
+  sendLoginOtp,
+  verifyLoginOtp,
+  type LoginResponse
+} from "@/lib/api";
 import { clearExamStorage } from "@/hooks/useExamState";
 import { BRANCHES, YEARS } from "@/lib/constants";
 import styles from "./login.module.css";
@@ -17,6 +25,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [branch, setBranch] = useState("DS");
   const [year, setYear] = useState("1st Year");
+
+  // OTP Flow states
+  const [step, setStep] = useState<"form" | "otp">("form");
+  const [otp, setOtp] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +47,36 @@ export default function LoginPage() {
     router.prefetch("/dashboard");
   }, [router]);
 
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  function saveStudentSession(data: LoginResponse) {
+    clearExamStorage();
+    localStorage.setItem("exam_token", data.access_token);
+    localStorage.setItem(
+      "exam_student",
+      JSON.stringify({
+        id: data.student_id,
+        usn: usn.trim().toUpperCase(),
+        name: data.student_name,
+        email: data.email,
+        branch: data.branch,
+        examStartTime: data.exam_start_time,
+        examDurationMinutes: data.exam_duration_minutes,
+        examTitle: data.exam_title,
+        totalQuestions: data.total_questions,
+        avatarUrl: data.avatar_url,
+      })
+    );
+    router.push("/dashboard");
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
@@ -47,7 +91,7 @@ export default function LoginPage() {
     }
 
     if (isRegistering && (!name.trim() || !email.trim())) {
-      setError("Incomplete registration profile.");
+      setError("Incomplete registration profile. Name and Email are required.");
       return;
     }
 
@@ -55,36 +99,103 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const data = await loginStudent(usn.trim(), password, {
-        name: name.trim() || undefined,
-        email: email.trim() || undefined,
-        branch: branch,
-        year: year
-      });
-
-      // Clear previous student's cached answers on new login
-      clearExamStorage();
-
-      localStorage.setItem("exam_token", data.access_token);
-      localStorage.setItem(
-        "exam_student",
-        JSON.stringify({
-          id: data.student_id,
+      if (isRegistering) {
+        // Sign-Up Step 1: Send OTP to student email
+        const res = await sendSignupOtp({
           usn: usn.trim().toUpperCase(),
-          name: data.student_name,
-          email: data.email,
-          branch: data.branch,
-          examStartTime: data.exam_start_time,
-          examDurationMinutes: data.exam_duration_minutes,
-          examTitle: data.exam_title,
-          totalQuestions: data.total_questions,
-          avatarUrl: data.avatar_url,
-        })
-      );
+          email: email.trim().toLowerCase(),
+          name: name.trim(),
+          password,
+          branch,
+          year,
+        });
 
-      router.push("/dashboard");
+        if (res.success) {
+          setOtpEmail(email.trim().toLowerCase());
+          setStep("otp");
+          setResendCooldown(60);
+          setOtp("");
+        } else {
+          setError(res.message || "Failed to send verification code.");
+        }
+      } else {
+        // Login Step 1: Verify credentials & send OTP (Option A: 2FA Login)
+        const res = await sendLoginOtp(usn.trim().toUpperCase(), password);
+
+        if (res.success) {
+          setOtpEmail(res.masked_email || "your registered email");
+          setStep("otp");
+          setResendCooldown(60);
+          setOtp("");
+        } else if (res.email_required) {
+          // Fallback direct login for legacy accounts with no email
+          const data = await loginStudent(usn.trim(), password);
+          saveStudentSession(data);
+          return;
+        } else {
+          setError(res.message || "Authentication failed.");
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: FormEvent) {
+    e.preventDefault();
+    if (!otp.trim() || otp.trim().length !== 6) {
+      setError("Please enter the complete 6-digit verification code.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      let data: LoginResponse;
+      if (isRegistering) {
+        data = await verifySignupOtp({
+          usn: usn.trim().toUpperCase(),
+          email: email.trim().toLowerCase(),
+          otp: otp.trim(),
+          name: name.trim(),
+          password,
+          branch,
+          year,
+        });
+      } else {
+        data = await verifyLoginOtp(usn.trim().toUpperCase(), otp.trim());
+      }
+      saveStudentSession(data);
+    } catch (err: any) {
+      setError(err.message || "Invalid or expired verification code.");
+      setLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    if (resendCooldown > 0 || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      if (isRegistering) {
+        await sendSignupOtp({
+          usn: usn.trim().toUpperCase(),
+          email: email.trim().toLowerCase(),
+          name: name.trim(),
+          password,
+          branch,
+          year,
+        });
+      } else {
+        await sendLoginOtp(usn.trim().toUpperCase(), password);
+      }
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(err.message || "Failed to resend code.");
+    } finally {
       setLoading(false);
     }
   }
@@ -123,231 +234,316 @@ export default function LoginPage() {
         <div className={styles.titleMain}>Campus Nexus</div>
         <h1 className={styles.titleSub}>Student Hub</h1>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.inputWrap}>
-            <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-            </svg>
-            <input
-              type="text"
-              className={styles.inputField}
-              placeholder={isRegistering ? "USN No" : "USN No"}
-              value={usn}
-              onChange={(e) => {
-                const val = e.target.value;
-                setUsn(isRegistering ? val.toUpperCase() : val);
-              }}
-              disabled={loading}
-              spellCheck="false"
-              required
-            />
-          </div>
+        {step === "otp" ? (
+          <form onSubmit={handleVerifyOtp} className={styles.form}>
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 36, marginBottom: 6 }}>📬</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                {isRegistering ? "Verify Registration Email" : "Two-Factor Verification"}
+              </div>
+              <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.5 }}>
+                Enter the 6-digit OTP code sent to: <br />
+                <strong style={{ color: "#a5b4fc", wordBreak: "break-all" }}>{otpEmail}</strong>
+              </p>
+            </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div className={styles.inputWrap}>
               <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               <input
-                type="password"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                autoFocus
                 className={styles.inputField}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="• • • • • •"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
                 disabled={loading}
-                minLength={6}
-                maxLength={16}
+                style={{ letterSpacing: 8, fontSize: 20, textAlign: "center", fontWeight: 700 }}
+                required
+              />
+            </div>
+
+            {error && (
+              <div className={styles.error}>{error}</div>
+            )}
+
+            <button type="submit" className={styles.submitBtn} disabled={loading || otp.length !== 6}>
+              {loading ? "Verifying..." : isRegistering ? "Verify & Register Account" : "Verify & Sign In"}
+            </button>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, fontSize: 13 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("form");
+                  setError("");
+                }}
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "4px 0" }}
+              >
+                ← Edit Details
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0 || loading}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: resendCooldown > 0 ? "rgba(255,255,255,0.3)" : "#818cf8",
+                  cursor: resendCooldown > 0 ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  padding: "4px 0"
+                }}
+              >
+                {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : "Resend Code"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.inputWrap}>
+              <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+              </svg>
+              <input
+                type="text"
+                className={styles.inputField}
+                placeholder={isRegistering ? "USN No" : "USN No"}
+                value={usn}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setUsn(isRegistering ? val.toUpperCase() : val);
+                }}
+                disabled={loading}
                 spellCheck="false"
                 required
               />
             </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '4px', textAlign: 'left' }}>
-              Password must be 6-16 characters
-            </span>
-          </div>
 
-          <AnimatePresence>
-            {isRegistering && (
-              <m.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className={styles.form}
-                style={{ overflow: 'visible' }}
-              >
-                <div className={styles.inputWrap}>
-                  <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                  <input
-                    type="text"
-                    className={styles.inputField}
-                    placeholder="Full Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required={isRegistering}
-                    spellCheck="false"
-                  />
-                </div>
-                <div className={styles.inputWrap}>
-                  <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
-                  </svg>
-                  <input
-                    type="email"
-                    className={styles.inputField}
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required={isRegistering}
-                    spellCheck="false"
-                  />
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className={styles.inputWrap}>
+                <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <input
+                  type="password"
+                  className={styles.inputField}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  minLength={6}
+                  maxLength={16}
+                  spellCheck="false"
+                  required
+                />
+              </div>
+              <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '4px', textAlign: 'left' }}>
+                Password must be 6-16 characters
+              </span>
+            </div>
 
-                <div className={styles.selectWrapper}>
-                  <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                  </svg>
-                  <div
-                    className={styles.selectTrigger}
-                    onClick={() => setIsBranchOpen(!isBranchOpen)}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {selectedBranchName}
-                    </span>
-                    <span style={{ fontSize: '10px', opacity: 0.5 }}>{isBranchOpen ? "▲" : "▼"}</span>
-                  </div>
-
-                  <AnimatePresence>
-                    {isBranchOpen && (
-                      <m.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className={styles.selectOptions}
-                      >
-                        {BRANCHES.map(b => (
-                          <div
-                            key={b.id}
-                            className={styles.selectOption}
-                            onClick={() => {
-                              setBranch(b.id);
-                              setIsBranchOpen(false);
-                            }}
-                          >
-                            {b.name}
-                          </div>
-                        ))}
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className={styles.selectWrapper}>
-                  <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                  </svg>
-                  <div
-                    className={styles.selectTrigger}
-                    onClick={() => setIsYearOpen(!isYearOpen)}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {year}
-                    </span>
-                    <span style={{ fontSize: '10px', opacity: 0.5 }}>{isYearOpen ? "▲" : "▼"}</span>
-                  </div>
-
-                  <AnimatePresence>
-                    {isYearOpen && (
-                      <m.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className={styles.selectOptions}
-                      >
-                        {YEARS.map(y => (
-                          <div
-                            key={y}
-                            className={styles.selectOption}
-                            onClick={() => {
-                              setYear(y);
-                              setIsYearOpen(false);
-                            }}
-                          >
-                            {y}
-                          </div>
-                        ))}
-                      </m.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </m.div>
-            )}
-          </AnimatePresence>
-
-          {error && (
-            <div className={styles.error} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {error}
-              {(error.toLowerCase().includes("already logged in") || error.toLowerCase().includes("another device")) && (
-                <button
-                  type="button"
-                  className={styles.submitBtn}
-                  style={{
-                    background: '#ef4444',
-                    fontSize: 12,
-                    padding: '8px 12px',
-                    height: 'auto',
-                    marginTop: 4,
-                    width: '100%',
-                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                  }}
-                  onClick={async () => {
-                    try {
-                      setLoading(true);
-                      const { resetSession } = await import("@/lib/api");
-                      await resetSession(usn, password);
-                      setError("");
-                      alert("Stale session cleared. You can now login.");
-                    } catch (err: any) {
-                      setError(err.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+            <AnimatePresence>
+              {isRegistering && (
+                <m.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className={styles.form}
+                  style={{ overflow: 'visible' }}
                 >
-                  Logout from other device
-                </button>
+                  <div className={styles.inputWrap}>
+                    <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    <input
+                      type="text"
+                      className={styles.inputField}
+                      placeholder="Full Name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required={isRegistering}
+                      spellCheck="false"
+                    />
+                  </div>
+                  <div className={styles.inputWrap}>
+                    <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <input
+                      type="email"
+                      className={styles.inputField}
+                      placeholder="Email Address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required={isRegistering}
+                      spellCheck="false"
+                    />
+                  </div>
+
+                  <div className={styles.selectWrapper}>
+                    <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <div
+                      className={styles.selectTrigger}
+                      onClick={() => setIsBranchOpen(!isBranchOpen)}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedBranchName}
+                      </span>
+                      <span style={{ fontSize: '10px', opacity: 0.5 }}>{isBranchOpen ? "▲" : "▼"}</span>
+                    </div>
+
+                    <AnimatePresence>
+                      {isBranchOpen && (
+                        <m.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className={styles.selectOptions}
+                        >
+                          {BRANCHES.map(b => (
+                            <div
+                              key={b.id}
+                              className={styles.selectOption}
+                              onClick={() => {
+                                setBranch(b.id);
+                                setIsBranchOpen(false);
+                              }}
+                            >
+                              {b.name}
+                            </div>
+                          ))}
+                        </m.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className={styles.selectWrapper}>
+                    <svg className={styles.inputIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <div
+                      className={styles.selectTrigger}
+                      onClick={() => setIsYearOpen(!isYearOpen)}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {year}
+                      </span>
+                      <span style={{ fontSize: '10px', opacity: 0.5 }}>{isYearOpen ? "▲" : "▼"}</span>
+                    </div>
+
+                    <AnimatePresence>
+                      {isYearOpen && (
+                        <m.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className={styles.selectOptions}
+                        >
+                          {YEARS.map(y => (
+                            <div
+                              key={y}
+                              className={styles.selectOption}
+                              onClick={() => {
+                                setYear(y);
+                                setIsYearOpen(false);
+                              }}
+                            >
+                              {y}
+                            </div>
+                          ))}
+                        </m.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </m.div>
+              )}
+            </AnimatePresence>
+
+            {error && (
+              <div className={styles.error} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {error}
+                {(error.toLowerCase().includes("already logged in") || error.toLowerCase().includes("another device")) && (
+                  <button
+                    type="button"
+                    className={styles.submitBtn}
+                    style={{
+                      background: '#ef4444',
+                      fontSize: 12,
+                      padding: '8px 12px',
+                      height: 'auto',
+                      marginTop: 4,
+                      width: '100%',
+                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                    }}
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        const { resetSession } = await import("@/lib/api");
+                        await resetSession(usn, password);
+                        setError("");
+                        alert("Stale session cleared. You can now login.");
+                      } catch (err: any) {
+                        setError(err.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Logout from other device
+                  </button>
+                )}
+              </div>
+            )}
+
+            <button type="submit" className={styles.submitBtn} disabled={loading}>
+              {loading ? "Sending Code..." : isRegistering ? "Send OTP & Register" : "Continue with OTP"}
+            </button>
+          </form>
+        )}
+
+        {step === "form" && (
+          <div className={styles.linksRow}>
+            <div
+              className={styles.link}
+              onClick={() => {
+                if (isRegistering) {
+                  setIsRegistering(false);
+                  setError("");
+                } else {
+                  setModalType("recovery");
+                  setShowForgotModal(true);
+                }
+              }}
+            >
+              {isRegistering ? "Back to Login" : "Forgot Password?"}
+            </div>
+            <div
+              className={styles.link}
+              style={{ textAlign: "right", lineHeight: 1.4 }}
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError("");
+              }}
+            >
+              {isRegistering ? (
+                "Already registered? Login"
+              ) : (
+                <>
+                  New student?<br />Create account
+                </>
               )}
             </div>
-          )}
-
-          <button type="submit" className={styles.submitBtn} disabled={loading}>
-            {loading ? "Verifying..." : isRegistering ? "Secure Sign In" : "Secure Login"}
-          </button>
-        </form>
-
-        <div className={styles.linksRow}>
-          <div
-            className={styles.link}
-            onClick={() => {
-              if (isRegistering) {
-                setIsRegistering(false);
-              } else {
-                setModalType("recovery");
-                setShowForgotModal(true);
-              }
-            }}
-          >
-            {isRegistering ? "Back to Login" : "Forgot Password?"}
           </div>
-          <div className={styles.link} style={{ textAlign: "right", lineHeight: 1.4 }} onClick={() => setIsRegistering(!isRegistering)}>
-            {isRegistering ? "" : (
-              <>
-                New student?<br />Create account
-              </>
-            )}
-          </div>
-        </div>
+        )}
       </m.div>
 
       {/* Forgot Password Modal */}

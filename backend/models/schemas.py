@@ -33,6 +33,32 @@ class ProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     avatar_url: Optional[str] = None
 
+# ── Email OTP Schemas ─────────────────────────────────────────
+class SendSignupOtpRequest(BaseModel):
+    usn: str
+    email: str
+    name: str
+    branch: Optional[str] = "DS"
+    year: Optional[str] = "1st Year"
+    password: str
+
+class VerifySignupOtpRequest(BaseModel):
+    usn: str
+    email: str
+    otp: str
+    name: str
+    password: str
+    branch: Optional[str] = "DS"
+    year: Optional[str] = "1st Year"
+
+class SendLoginOtpRequest(BaseModel):
+    usn: str
+    password: str
+
+class VerifyLoginOtpRequest(BaseModel):
+    usn: str
+    otp: str
+
 # ── Questions ─────────────────────────────────────────────────
 class QuestionOut(BaseModel):
     id: str
