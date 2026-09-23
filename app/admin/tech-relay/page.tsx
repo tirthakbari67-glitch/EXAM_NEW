@@ -2269,7 +2269,7 @@ export default function TechRelayAdminPage() {
                             <span>✱</span> <span>The Password Game Challenge (Round 5) Active</span>
                           </div>
                           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", margin: "4px 0 10px", lineHeight: 1.5 }}>
-                            Students dynamically synthesize a master password through the progressive 8-rule validation engine inspired by The Password Game:
+                            Students dynamically synthesize a master password through the progressive 10-rule validation engine inspired by The Password Game:
                           </p>
 
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
@@ -2296,6 +2296,12 @@ export default function TechRelayAdminPage() {
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
                               <strong style={{ color: "#2dd4bf" }}>Rule 8:</strong> Sponsor (Shell, Pepsi, Starbucks, GitHub, Google, Apple)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#fb7185" }}>Rule 9:</strong> Current Year (2026)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#38bdf8" }}>Rule 10:</strong> Periodic Table Element Symbol (Na, He, Au, etc.)
                             </div>
                           </div>
                         </div>

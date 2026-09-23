@@ -3,9 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShieldCheck,
   CheckCircle2,
-  XCircle,
   Eye,
   EyeOff,
   Copy,
@@ -15,7 +13,8 @@ import {
   Unlock,
   KeyRound,
   RotateCcw,
-  Zap,
+  Calendar,
+  FlaskConical,
 } from "lucide-react";
 import type { TechRelayRound } from "@/lib/api";
 
@@ -28,7 +27,7 @@ export interface ThePasswordGameRoundProps {
   isSubmitting?: boolean;
 }
 
-// ── Sponsors with Brand Logos ───────────────────────────────────────
+// ── Sponsors with Brand Logos (Rule 8) ──────────────────────────────
 interface Sponsor {
   id: string;
   name: string;
@@ -156,7 +155,7 @@ const SPONSORS: Sponsor[] = [
   },
 ];
 
-// ── Valid Months ────────────────────────────────────────────────────
+// ── Valid Months (Rule 6) ───────────────────────────────────────────
 const VALID_MONTHS = [
   "january",
   "february",
@@ -184,8 +183,69 @@ const VALID_MONTHS = [
   "dec",
 ];
 
-// ── Valid Roman Numerals ───────────────────────────────────────────
+// ── Valid Roman Numerals (Rule 7) ───────────────────────────────────
 const ROMAN_NUMERALS = ["I", "V", "X", "L", "C", "D", "M"];
+
+// ── Chemistry Periodic Table Elements (Rule 10) ─────────────────────
+interface ChemicalElement {
+  symbol: string;
+  name: string;
+  number: number;
+}
+
+const PERIODIC_ELEMENTS: ChemicalElement[] = [
+  { symbol: "He", name: "Helium", number: 2 },
+  { symbol: "Li", name: "Lithium", number: 3 },
+  { symbol: "Be", name: "Beryllium", number: 4 },
+  { symbol: "Ne", name: "Neon", number: 10 },
+  { symbol: "Na", name: "Sodium", number: 11 },
+  { symbol: "Mg", name: "Magnesium", number: 12 },
+  { symbol: "Al", name: "Aluminium", number: 13 },
+  { symbol: "Si", name: "Silicon", number: 14 },
+  { symbol: "Cl", name: "Chlorine", number: 17 },
+  { symbol: "Ar", name: "Argon", number: 18 },
+  { symbol: "Ca", name: "Calcium", number: 20 },
+  { symbol: "Sc", name: "Scandium", number: 21 },
+  { symbol: "Ti", name: "Titanium", number: 22 },
+  { symbol: "Cr", name: "Chromium", number: 24 },
+  { symbol: "Mn", name: "Manganese", number: 25 },
+  { symbol: "Fe", name: "Iron", number: 26 },
+  { symbol: "Co", name: "Cobalt", number: 27 },
+  { symbol: "Ni", name: "Nickel", number: 28 },
+  { symbol: "Cu", name: "Copper", number: 29 },
+  { symbol: "Zn", name: "Zinc", number: 30 },
+  { symbol: "Ga", name: "Gallium", number: 31 },
+  { symbol: "Ge", name: "Germanium", number: 32 },
+  { symbol: "As", name: "Arsenic", number: 33 },
+  { symbol: "Se", name: "Selenium", number: 34 },
+  { symbol: "Br", name: "Bromine", number: 35 },
+  { symbol: "Kr", name: "Krypton", number: 36 },
+  { symbol: "Rb", name: "Rubidium", number: 37 },
+  { symbol: "Sr", name: "Strontium", number: 38 },
+  { symbol: "Zr", name: "Zirconium", number: 40 },
+  { symbol: "Mo", name: "Molybdenum", number: 42 },
+  { symbol: "Ru", name: "Ruthenium", number: 44 },
+  { symbol: "Rh", name: "Rhodium", number: 45 },
+  { symbol: "Pd", name: "Palladium", number: 46 },
+  { symbol: "Ag", name: "Silver", number: 47 },
+  { symbol: "Cd", name: "Cadmium", number: 48 },
+  { symbol: "In", name: "Indium", number: 49 },
+  { symbol: "Sn", name: "Tin", number: 50 },
+  { symbol: "Sb", name: "Antimony", number: 51 },
+  { symbol: "Te", name: "Tellurium", number: 52 },
+  { symbol: "Xe", name: "Xenon", number: 54 },
+  { symbol: "Cs", name: "Caesium", number: 55 },
+  { symbol: "Ba", name: "Barium", number: 56 },
+  { symbol: "Pt", name: "Platinum", number: 78 },
+  { symbol: "Au", name: "Gold", number: 79 },
+  { symbol: "Hg", name: "Mercury", number: 80 },
+  { symbol: "Pb", name: "Lead", number: 82 },
+  { symbol: "Bi", name: "Bismuth", number: 83 },
+  { symbol: "Rn", name: "Radon", number: 86 },
+  { symbol: "Ra", name: "Radium", number: 88 },
+  { symbol: "U", name: "Uranium", number: 92 },
+  { symbol: "Pu", name: "Plutonium", number: 94 },
+];
 
 export default function ThePasswordGameRound({
   answer: externalAnswer = "",
@@ -242,6 +302,15 @@ export default function ThePasswordGameRound({
     const matchedSponsor = SPONSORS.find((s) => lower.includes(s.brandKeyword));
     const r8Valid = Boolean(matchedSponsor);
 
+    // Rule 9: Current Year Rule (2026)
+    const r9Valid = trimmed.includes("2026");
+
+    // Rule 10: Chemistry Periodic Table Element Symbol (e.g. Na, He, Au)
+    const matchedElement = PERIODIC_ELEMENTS.find(
+      (el) => trimmed.includes(el.symbol) || lower.includes(el.symbol.toLowerCase())
+    );
+    const r10Valid = Boolean(matchedElement);
+
     return {
       r1: { id: 1, valid: r1Valid, length: trimmed.length },
       r2: { id: 2, valid: r2Valid },
@@ -251,6 +320,8 @@ export default function ThePasswordGameRound({
       r6: { id: 6, valid: r6Valid, matchedMonth },
       r7: { id: 7, valid: r7Valid, foundRomans },
       r8: { id: 8, valid: r8Valid, matchedSponsor },
+      r9: { id: 9, valid: r9Valid },
+      r10: { id: 10, valid: r10Valid, matchedElement },
     };
   }, [password]);
 
@@ -289,6 +360,29 @@ export default function ThePasswordGameRound({
       ruleEvaluation.r7.valid
     )
       progressiveMax = 8;
+    if (
+      ruleEvaluation.r1.valid &&
+      ruleEvaluation.r2.valid &&
+      ruleEvaluation.r3.valid &&
+      ruleEvaluation.r4.valid &&
+      ruleEvaluation.r5.valid &&
+      ruleEvaluation.r6.valid &&
+      ruleEvaluation.r7.valid &&
+      ruleEvaluation.r8.valid
+    )
+      progressiveMax = 9;
+    if (
+      ruleEvaluation.r1.valid &&
+      ruleEvaluation.r2.valid &&
+      ruleEvaluation.r3.valid &&
+      ruleEvaluation.r4.valid &&
+      ruleEvaluation.r5.valid &&
+      ruleEvaluation.r6.valid &&
+      ruleEvaluation.r7.valid &&
+      ruleEvaluation.r8.valid &&
+      ruleEvaluation.r9.valid
+    )
+      progressiveMax = 10;
 
     setMaxUnlockedRule((prev) => Math.max(prev, progressiveMax));
   }, [ruleEvaluation]);
@@ -365,6 +459,7 @@ export default function ThePasswordGameRound({
       renderDetails: () => {
         const { sum, digitsCount } = ruleEvaluation.r5;
         const diff = 25 - sum;
+        const has2026 = password.includes("2026");
         return (
           <div className="mt-2 space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
@@ -398,7 +493,10 @@ export default function ThePasswordGameRound({
                 <span className="text-emerald-400 font-semibold">🎯 Target sum 25 reached exactly!</span>
               ) : sum < 25 ? (
                 <span className="text-amber-400/90">
-                  Tip: Need <strong>+{diff}</strong> more (e.g. 5+5+5+5+5 or 9+8+8)
+                  Tip: Need <strong>+{diff}</strong> more.{" "}
+                  {has2026
+                    ? "(2026 digits = 10, remaining needed: 15, e.g. +555 or +96 or +87)"
+                    : "(e.g. 2026 + 555 adds to 25)"}
                 </span>
               ) : (
                 <span className="text-rose-400/90">
@@ -512,6 +610,96 @@ export default function ThePasswordGameRound({
         </div>
       ),
     },
+    {
+      id: 9,
+      ruleNumber: 9,
+      title: "Your password must include the current year (2026).",
+      isValid: ruleEvaluation.r9.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1">
+          {ruleEvaluation.r9.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Current year verified:</span>
+              <span className="font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                2026
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-slate-400">
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>
+                Please include <strong className="text-amber-300 font-mono">2026</strong> in your password.
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 10,
+      ruleNumber: 10,
+      title: "Your password must include a periodic table element symbol (e.g., Na, He, Au).",
+      isValid: ruleEvaluation.r10.valid,
+      renderDetails: () => (
+        <div className="mt-2 text-xs space-y-2">
+          {ruleEvaluation.r10.valid && ruleEvaluation.r10.matchedElement ? (
+            <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 border border-emerald-500/50 flex flex-col items-center justify-center font-mono shrink-0">
+                <span className="text-[9px] text-emerald-300/80 leading-none">
+                  {ruleEvaluation.r10.matchedElement.number}
+                </span>
+                <span className="text-base font-bold text-emerald-200 leading-none">
+                  {ruleEvaluation.r10.matchedElement.symbol}
+                </span>
+              </div>
+              <div>
+                <div className="text-emerald-300 font-bold flex items-center gap-1">
+                  <span>✓ Element Identified:</span>
+                  <span className="text-white">
+                    {ruleEvaluation.r10.matchedElement.name} ({ruleEvaluation.r10.matchedElement.symbol})
+                  </span>
+                </div>
+                <div className="text-[11px] text-emerald-400/80">
+                  Atomic Number #{ruleEvaluation.r10.matchedElement.number}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <FlaskConical className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Chemistry element symbol required (case-insensitive):</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { sym: "Na", name: "Sodium" },
+                  { sym: "He", name: "Helium" },
+                  { sym: "Au", name: "Gold" },
+                  { sym: "Fe", name: "Iron" },
+                  { sym: "Cu", name: "Copper" },
+                  { sym: "Ag", name: "Silver" },
+                  { sym: "Al", name: "Aluminium" },
+                  { sym: "Si", name: "Silicon" },
+                  { sym: "Mg", name: "Magnesium" },
+                ].map((item) => (
+                  <span
+                    key={item.sym}
+                    className={`px-2 py-0.5 rounded font-mono text-[11px] border transition-colors ${
+                      password.toLowerCase().includes(item.sym.toLowerCase())
+                        ? "bg-emerald-500/25 text-emerald-200 border-emerald-500/50 font-bold"
+                        : "bg-white/5 text-slate-300 border-white/10"
+                    }`}
+                  >
+                    <strong>{item.sym}</strong> ({item.name})
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
   ];
 
   // Visible rules: progressive or show all
@@ -519,8 +707,7 @@ export default function ThePasswordGameRound({
     ? allRulesList
     : allRulesList.filter((r) => r.ruleNumber <= maxUnlockedRule);
 
-  // Render order: reverse order as in Password Game (latest unlocked at top) or ordered
-  // Rendering in reverse puts the newest rule right below the input box, just like the game!
+  // Render order: reverse order as in Password Game (latest unlocked at top)
   const displayRules = [...visibleRules].reverse();
 
   const totalSatisfied = allRulesList.filter((r) => r.isValid).length;
@@ -591,14 +778,14 @@ export default function ThePasswordGameRound({
               }`}
             >
               {isAllSatisfied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-indigo-400" />}
-              <span>{totalSatisfied} / 8 Rules</span>
+              <span>{totalSatisfied} / 10 Rules</span>
             </div>
 
             <button
               type="button"
               onClick={() => setShowAllRules(!showAllRules)}
               className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition-colors"
-              title={showAllRules ? "Switch to progressive reveal" : "Reveal all 8 rules"}
+              title={showAllRules ? "Switch to progressive reveal" : "Reveal all 10 rules"}
             >
               {showAllRules ? "Progressive" : "View All"}
             </button>
@@ -661,7 +848,7 @@ export default function ThePasswordGameRound({
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
 
-              {/* Prominent Live Character Length Badge (as seen in screenshots: 11, 23) */}
+              {/* Prominent Live Character Length Badge */}
               <div
                 className={`font-mono text-xs sm:text-sm font-bold px-2.5 py-1 rounded-lg border transition-all ${
                   password.length >= 8
@@ -760,7 +947,7 @@ export default function ThePasswordGameRound({
             >
               <div className="flex items-center justify-center gap-2 font-bold text-base sm:text-lg">
                 <Sparkles className="w-5 h-5 text-emerald-400 animate-spin" />
-                <span>All 8 Progressive Rules Satisfied!</span>
+                <span>All 10 Progressive Rules Satisfied!</span>
               </div>
               <p className="text-xs text-emerald-400/80">
                 The Master Security Vault is primed. Click below to submit and finalize the Tech Relay challenge.
@@ -768,8 +955,8 @@ export default function ThePasswordGameRound({
             </motion.div>
           ) : (
             <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-              <span>Gate Status: <strong>{totalSatisfied} of 8 Rules Met</strong></span>
-              <span>All 8 rules must turn green to unlock</span>
+              <span>Gate Status: <strong>{totalSatisfied} of 10 Rules Met</strong></span>
+              <span>All 10 rules must turn green to unlock</span>
             </div>
           )}
 
@@ -796,7 +983,7 @@ export default function ThePasswordGameRound({
             ) : (
               <>
                 <Lock className="w-5 h-5 text-slate-500" />
-                <span>Complete All 8 Rules To Unlock ({totalSatisfied}/8)</span>
+                <span>Complete All 10 Rules To Unlock ({totalSatisfied}/10)</span>
               </>
             )}
           </button>
