@@ -2266,42 +2266,36 @@ export default function TechRelayAdminPage() {
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#67e8f9", fontWeight: 700, fontSize: 14 }}>
-                            <span>✨</span> <span>10-Step Sequential Interactive Workflow Component Active</span>
+                            <span>✱</span> <span>The Password Game Challenge (Round 5) Active</span>
                           </div>
                           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", margin: "4px 0 10px", lineHeight: 1.5 }}>
-                            Round 5 features the full interactive master key cracking component. Students execute all 10 steps sequentially:
+                            Students dynamically synthesize a master password through the progressive 8-rule validation engine inspired by The Password Game:
                           </p>
 
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#67e8f9" }}>1. Base Name:</strong> Initial alias or codename
+                              <strong style={{ color: "#67e8f9" }}>Rule 1:</strong> Min 8 characters length
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#a5b4fc" }}>2. Number Addition:</strong> Numeric value (+42, +101)
+                              <strong style={{ color: "#a5b4fc" }}>Rule 2:</strong> At least one number (0-9)
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#fbbf24" }}>3. Math Challenge:</strong> 14 × 7 = 98 calculation
+                              <strong style={{ color: "#fbbf24" }}>Rule 3:</strong> At least one uppercase letter (A-Z)
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#c084fc" }}>4. Brand Logo:</strong> NEXUS / OCTOCAT / CYBER
+                              <strong style={{ color: "#c084fc" }}>Rule 4:</strong> Special symbol (@, #, !, $, %, *)
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#f472b6" }}>5. Color Choice:</strong> CYAN / VIOLET / EMERALD
+                              <strong style={{ color: "#f472b6" }}>Rule 5:</strong> Digits sum equals exactly 25
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#34d399" }}>6. Tech Tag:</strong> TS / PY / GO / RUST
+                              <strong style={{ color: "#34d399" }}>Rule 6:</strong> Month of the year (e.g. May, Jan)
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#f87171" }}>7. Special Symbol:</strong> ! / # / $ / &
+                              <strong style={{ color: "#f87171" }}>Rule 7:</strong> Roman numeral (V, X, L, C, D, M)
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#2dd4bf" }}>8. Verify Digit:</strong> Parity Checksum [7]
-                            </div>
-                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#60a5fa" }}>9. String Assembly:</strong> Sequential stream buffer
-                            </div>
-                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#4ade80" }}>10. Master Key:</strong> UPPERCASE vault unlock
+                              <strong style={{ color: "#2dd4bf" }}>Rule 8:</strong> Sponsor (Shell, Pepsi, Starbucks, GitHub, Google, Apple)
                             </div>
                           </div>
                         </div>
