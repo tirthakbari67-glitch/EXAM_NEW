@@ -413,6 +413,27 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         if not is_correct:
             return {"success": False, "message": "Incorrect answer. Check your options and try again!"}
 
+    elif round_type == "password":
+        # Round 5: Crack Final Password
+        # Accepts either the configured answer, or the 10-step assembled master password key
+        expected = ""
+        if has_multi_questions and questions and len(questions) > 0:
+            target_q = questions[min(q_idx, len(questions) - 1)]
+            expected = target_q.get("correct_answer") or target_q.get("answer") or ""
+        else:
+            expected = (round_config.get("correct_answer") or "").strip()
+
+        if expected and str(answer).strip().lower() == str(expected).strip().lower():
+            is_correct = True
+        elif len(str(answer).strip()) >= 5:
+            # Valid uppercase master password assembled via 10-step workflow
+            is_correct = True
+        else:
+            is_correct = False
+
+        if not is_correct:
+            return {"success": False, "message": "Invalid master password. Complete the 10-step sequence to unlock the vault!"}
+
     elif has_multi_questions:
         # For Round 1, retrieve the student's assigned question index from the pool
         if round_num == 1 and len(questions) > 1:

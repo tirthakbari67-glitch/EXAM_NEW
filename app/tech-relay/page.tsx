@@ -13,6 +13,7 @@ import {
   type TechRelayRound,
   type TechRelayProgress,
 } from "@/lib/api";
+import CrackPasswordRound from "@/components/CrackPasswordRound";
 import styles from "./tech-relay.module.css";
 
 // ── Round Icons ──────────────────────────────────────────────────
@@ -441,7 +442,7 @@ export default function TechRelayPage() {
   }, [loadData, router]);
 
   // ── Submit Handler ───────────────────────────────────────────
-  async function handleSubmit() {
+  async function handleSubmit(overrideAnswer?: string) {
     if (submitting || isTerminated) return;
     setFeedback(null);
     setSubmitting(true);
@@ -453,7 +454,7 @@ export default function TechRelayPage() {
       return;
     }
 
-    let answer = textAnswer;
+    let answer = typeof overrideAnswer === "string" ? overrideAnswer : textAnswer;
     if (currentRoundConfig.round_type === "mcq") {
       const content = parseContent<{ questions?: unknown[] }>(currentRoundConfig.content);
       const qCount = content?.questions?.length || 0;
@@ -887,15 +888,22 @@ export default function TechRelayPage() {
               <McqRound round={activeRoundConfig} mcqAnswers={mcqAnswers} setMcqAnswers={setMcqAnswers} />
             )}
             {activeRoundConfig.round_type === "password" && (
-              <PasswordRound round={activeRoundConfig} subIndex={currentQuestionIndex} answer={textAnswer} setAnswer={setTextAnswer} />
+              <CrackPasswordRound
+                round={activeRoundConfig}
+                subIndex={currentQuestionIndex}
+                answer={textAnswer}
+                setAnswer={setTextAnswer}
+                onSubmit={(finalKey) => handleSubmit(finalKey)}
+                isSubmitting={submitting}
+              />
             )}
 
             {/* Submit Button */}
-            {activeRound === currentRound && (
+            {activeRound === currentRound && activeRoundConfig.round_type !== "password" && (
               <div className={styles.inputGroup}>
                 <button
                   className={styles.submitBtn}
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit()}
                   disabled={submitting}
                 >
                   {submitting
