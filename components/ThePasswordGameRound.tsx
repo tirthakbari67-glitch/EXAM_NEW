@@ -15,6 +15,16 @@ import {
   RotateCcw,
   Calendar,
   FlaskConical,
+  Code2,
+  Moon,
+  Palette,
+  Cpu,
+  ThumbsUp,
+  ShieldAlert,
+  Globe2,
+  Laptop,
+  Smile,
+  ShieldCheck,
 } from "lucide-react";
 import type { TechRelayRound } from "@/lib/api";
 
@@ -247,6 +257,63 @@ const PERIODIC_ELEMENTS: ChemicalElement[] = [
   { symbol: "Pu", name: "Plutonium", number: 94 },
 ];
 
+// ── Rule 11: Programming Languages ──────────────────────────────────
+const PROGRAMMING_LANGUAGES = [
+  "python",
+  "rust",
+  "java",
+  "golang",
+  "javascript",
+  "typescript",
+  "kotlin",
+  "swift",
+  "html",
+  "css",
+  "sql",
+  "ruby",
+  "php",
+  "scala",
+  "perl",
+];
+
+// ── Rule 12: Moon Phases ────────────────────────────────────────────
+const MOON_PHASES = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"];
+
+// ── Rule 14: Hardware Devices / Codename ─────────────────────────────
+const HARDWARE_COMPONENTS = [
+  "cpu",
+  "ram",
+  "gpu",
+  "rom",
+  "ssd",
+  "router",
+  "modem",
+  "drone",
+  "camera",
+  "sensor",
+  "printer",
+  "switch",
+  "server",
+];
+
+// ── Rule 15: Affirmation / Agreement words ──────────────────────────
+const AFFIRMATION_WORDS = ["yes", "ok", "true", "ready", "done", "pass"];
+
+// ── Rule 16: Security Token / CAPTCHA ───────────────────────────────
+const SECURITY_TOKEN = "NEXUS";
+
+// ── Rule 17: Network & Web Protocols ────────────────────────────────
+const NETWORK_PROTOCOLS = ["http", "https", "tcp", "udp", "ssh", "ftp", "dns", "smtp", "websocket"];
+
+// ── Rule 18: Operating Systems ──────────────────────────────────────
+const OPERATING_SYSTEMS = ["linux", "windows", "macos", "unix", "ubuntu", "android", "ios", "debian", "fedora"];
+
+// ── Rule 19: Emoticons / Happy Faces ────────────────────────────────
+const EMOTICONS = [":)", ":-)", ":d", "^^", ";)", "(:", "(-:"];
+
+// ── Rule 20: Vault Activation Key ───────────────────────────────────
+const ACTIVATION_CLEARANCE = "CLEAR";
+
 export default function ThePasswordGameRound({
   answer: externalAnswer = "",
   setAnswer: externalSetAnswer,
@@ -268,7 +335,11 @@ export default function ThePasswordGameRound({
     }
   };
 
-  // ── Rule Validation Engine ─────────────────────────────────────────
+  const appendToPassword = (snippet: string) => {
+    updatePassword(password + snippet);
+  };
+
+  // ── Rule Validation Engine (20 Rules) ───────────────────────────────
   const ruleEvaluation = useMemo(() => {
     const trimmed = password;
     const lower = trimmed.toLowerCase();
@@ -302,7 +373,7 @@ export default function ThePasswordGameRound({
     const matchedSponsor = SPONSORS.find((s) => lower.includes(s.brandKeyword));
     const r8Valid = Boolean(matchedSponsor);
 
-    // Rule 9: Current Year Rule (2026)
+    // Rule 9: Current Year (2026)
     const r9Valid = trimmed.includes("2026");
 
     // Rule 10: Chemistry Periodic Table Element Symbol (e.g. Na, He, Au)
@@ -310,6 +381,44 @@ export default function ThePasswordGameRound({
       (el) => trimmed.includes(el.symbol) || lower.includes(el.symbol.toLowerCase())
     );
     const r10Valid = Boolean(matchedElement);
+
+    // Rule 11: Programming Language
+    const matchedLang = PROGRAMMING_LANGUAGES.find((lang) => lower.includes(lang));
+    const r11Valid = Boolean(matchedLang);
+
+    // Rule 12: Moon Phase Emoji
+    const matchedMoon = MOON_PHASES.find((m) => trimmed.includes(m));
+    const r12Valid = Boolean(matchedMoon);
+
+    // Rule 13: Hex Color Code (e.g. #FFF, #000, #FF0000)
+    const hexColorMatch = trimmed.match(/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/);
+    const r13Valid = Boolean(hexColorMatch);
+
+    // Rule 14: Hardware Component
+    const matchedHardware = HARDWARE_COMPONENTS.find((hw) => lower.includes(hw));
+    const r14Valid = Boolean(matchedHardware);
+
+    // Rule 15: Affirmation Word (YES, OK, etc.)
+    const matchedAffirmation = AFFIRMATION_WORDS.find((word) => lower.includes(word));
+    const r15Valid = Boolean(matchedAffirmation);
+
+    // Rule 16: Security CAPTCHA Token (NEXUS)
+    const r16Valid = trimmed.includes(SECURITY_TOKEN) || lower.includes(SECURITY_TOKEN.toLowerCase());
+
+    // Rule 17: Network Protocol
+    const matchedProtocol = NETWORK_PROTOCOLS.find((proto) => lower.includes(proto));
+    const r17Valid = Boolean(matchedProtocol);
+
+    // Rule 18: Operating System
+    const matchedOS = OPERATING_SYSTEMS.find((os) => lower.includes(os));
+    const r18Valid = Boolean(matchedOS);
+
+    // Rule 19: Emoticon / Happy Face
+    const matchedEmoticon = EMOTICONS.find((emo) => lower.includes(emo));
+    const r19Valid = Boolean(matchedEmoticon);
+
+    // Rule 20: Master Vault Clearance Code (CLEAR)
+    const r20Valid = trimmed.includes(ACTIVATION_CLEARANCE) || lower.includes(ACTIVATION_CLEARANCE.toLowerCase());
 
     return {
       r1: { id: 1, valid: r1Valid, length: trimmed.length },
@@ -322,71 +431,57 @@ export default function ThePasswordGameRound({
       r8: { id: 8, valid: r8Valid, matchedSponsor },
       r9: { id: 9, valid: r9Valid },
       r10: { id: 10, valid: r10Valid, matchedElement },
+      r11: { id: 11, valid: r11Valid, matchedLang },
+      r12: { id: 12, valid: r12Valid, matchedMoon },
+      r13: { id: 13, valid: r13Valid, hex: hexColorMatch?.[0] },
+      r14: { id: 14, valid: r14Valid, matchedHardware },
+      r15: { id: 15, valid: r15Valid, matchedAffirmation },
+      r16: { id: 16, valid: r16Valid, token: SECURITY_TOKEN },
+      r17: { id: 17, valid: r17Valid, matchedProtocol },
+      r18: { id: 18, valid: r18Valid, matchedOS },
+      r19: { id: 19, valid: r19Valid, matchedEmoticon },
+      r20: { id: 20, valid: r20Valid, clearance: ACTIVATION_CLEARANCE },
     };
   }, [password]);
 
-  // Progressive unlock tracking (rules never hide once unlocked)
+  // Progressive unlock tracking (rules 1 to 20)
   useEffect(() => {
+    const checks = [
+      ruleEvaluation.r1.valid,
+      ruleEvaluation.r2.valid,
+      ruleEvaluation.r3.valid,
+      ruleEvaluation.r4.valid,
+      ruleEvaluation.r5.valid,
+      ruleEvaluation.r6.valid,
+      ruleEvaluation.r7.valid,
+      ruleEvaluation.r8.valid,
+      ruleEvaluation.r9.valid,
+      ruleEvaluation.r10.valid,
+      ruleEvaluation.r11.valid,
+      ruleEvaluation.r12.valid,
+      ruleEvaluation.r13.valid,
+      ruleEvaluation.r14.valid,
+      ruleEvaluation.r15.valid,
+      ruleEvaluation.r16.valid,
+      ruleEvaluation.r17.valid,
+      ruleEvaluation.r18.valid,
+      ruleEvaluation.r19.valid,
+      ruleEvaluation.r20.valid,
+    ];
+
     let progressiveMax = 1;
-    if (ruleEvaluation.r1.valid) progressiveMax = 2;
-    if (ruleEvaluation.r1.valid && ruleEvaluation.r2.valid) progressiveMax = 3;
-    if (ruleEvaluation.r1.valid && ruleEvaluation.r2.valid && ruleEvaluation.r3.valid) progressiveMax = 4;
-    if (ruleEvaluation.r1.valid && ruleEvaluation.r2.valid && ruleEvaluation.r3.valid && ruleEvaluation.r4.valid)
-      progressiveMax = 5;
-    if (
-      ruleEvaluation.r1.valid &&
-      ruleEvaluation.r2.valid &&
-      ruleEvaluation.r3.valid &&
-      ruleEvaluation.r4.valid &&
-      ruleEvaluation.r5.valid
-    )
-      progressiveMax = 6;
-    if (
-      ruleEvaluation.r1.valid &&
-      ruleEvaluation.r2.valid &&
-      ruleEvaluation.r3.valid &&
-      ruleEvaluation.r4.valid &&
-      ruleEvaluation.r5.valid &&
-      ruleEvaluation.r6.valid
-    )
-      progressiveMax = 7;
-    if (
-      ruleEvaluation.r1.valid &&
-      ruleEvaluation.r2.valid &&
-      ruleEvaluation.r3.valid &&
-      ruleEvaluation.r4.valid &&
-      ruleEvaluation.r5.valid &&
-      ruleEvaluation.r6.valid &&
-      ruleEvaluation.r7.valid
-    )
-      progressiveMax = 8;
-    if (
-      ruleEvaluation.r1.valid &&
-      ruleEvaluation.r2.valid &&
-      ruleEvaluation.r3.valid &&
-      ruleEvaluation.r4.valid &&
-      ruleEvaluation.r5.valid &&
-      ruleEvaluation.r6.valid &&
-      ruleEvaluation.r7.valid &&
-      ruleEvaluation.r8.valid
-    )
-      progressiveMax = 9;
-    if (
-      ruleEvaluation.r1.valid &&
-      ruleEvaluation.r2.valid &&
-      ruleEvaluation.r3.valid &&
-      ruleEvaluation.r4.valid &&
-      ruleEvaluation.r5.valid &&
-      ruleEvaluation.r6.valid &&
-      ruleEvaluation.r7.valid &&
-      ruleEvaluation.r8.valid &&
-      ruleEvaluation.r9.valid
-    )
-      progressiveMax = 10;
+    for (let i = 0; i < checks.length; i++) {
+      if (checks[i]) {
+        progressiveMax = Math.min(20, i + 2);
+      } else {
+        break;
+      }
+    }
 
     setMaxUnlockedRule((prev) => Math.max(prev, progressiveMax));
   }, [ruleEvaluation]);
 
+  // ── 20 Rules Definitions ───────────────────────────────────────────
   const allRulesList = [
     {
       id: 1,
@@ -683,18 +778,345 @@ export default function ThePasswordGameRound({
                   { sym: "Si", name: "Silicon" },
                   { sym: "Mg", name: "Magnesium" },
                 ].map((item) => (
-                  <span
+                  <button
                     key={item.sym}
-                    className={`px-2 py-0.5 rounded font-mono text-[11px] border transition-colors ${
+                    type="button"
+                    onClick={() => appendToPassword(item.sym)}
+                    className={`px-2 py-0.5 rounded font-mono text-[11px] border transition-colors cursor-pointer ${
                       password.toLowerCase().includes(item.sym.toLowerCase())
                         ? "bg-emerald-500/25 text-emerald-200 border-emerald-500/50 font-bold"
-                        : "bg-white/5 text-slate-300 border-white/10"
+                        : "bg-white/5 hover:bg-white/10 text-slate-300 border-white/10"
                     }`}
                   >
-                    <strong>{item.sym}</strong> ({item.name})
-                  </span>
+                    +<strong>{item.sym}</strong> ({item.name})
+                  </button>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 11,
+      ruleNumber: 11,
+      title: "Your password must include a programming language (e.g., Python, Rust, Java, Go, HTML).",
+      isValid: ruleEvaluation.r11.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1.5">
+          {ruleEvaluation.r11.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <Code2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Programming Language:</span>
+              <span className="capitalize font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r11.matchedLang}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {["Python", "Rust", "Java", "Go", "HTML", "SQL", "Swift", "Kotlin"].map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => appendToPassword(lang)}
+                  className="px-2 py-0.5 rounded font-mono text-[11px] bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                >
+                  +{lang}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 12,
+      ruleNumber: 12,
+      title: "Your password must include a moon phase emoji.",
+      isValid: ruleEvaluation.r12.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-2">
+          {ruleEvaluation.r12.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-2">
+              <span className="text-lg">{ruleEvaluation.r12.matchedMoon}</span>
+              <span>✓ Moon phase emoji verified!</span>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 text-slate-400">
+                <Moon className="w-3.5 h-3.5 text-amber-300" />
+                <span>Click any moon emoji to insert into your password:</span>
+              </div>
+              <div className="flex flex-wrap gap-2 text-lg">
+                {MOON_PHASES.map((moon) => (
+                  <button
+                    key={moon}
+                    type="button"
+                    onClick={() => appendToPassword(moon)}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 transition-colors cursor-pointer"
+                    title={`Insert ${moon}`}
+                  >
+                    {moon}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 13,
+      ruleNumber: 13,
+      title: "Your password must include a valid hex color code (e.g., #FFF, #000, #F00, #10B).",
+      isValid: ruleEvaluation.r13.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1.5">
+          {ruleEvaluation.r13.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded border border-white/30"
+                style={{ backgroundColor: ruleEvaluation.r13.hex }}
+              />
+              <span>✓ Hex Color:</span>
+              <span className="font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r13.hex}
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <Palette className="w-3.5 h-3.5 text-pink-400" />
+                <span>Click a 3-letter hex code (letters A-F recommended so sum is unchanged):</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                {["#FFF", "#ABC", "#DEF", "#F0F", "#0FF"].map((hex) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    onClick={() => appendToPassword(hex)}
+                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                  >
+                    +{hex}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 14,
+      ruleNumber: 14,
+      title: "Your password must include a computer hardware component (e.g., CPU, RAM, GPU, ROUTER).",
+      isValid: ruleEvaluation.r14.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1.5">
+          {ruleEvaluation.r14.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Hardware component:</span>
+              <span className="uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r14.matchedHardware}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+              {["CPU", "RAM", "GPU", "SSD", "ROUTER", "MODEM", "DRONE", "SENSOR"].map((hw) => (
+                <button
+                  key={hw}
+                  type="button"
+                  onClick={() => appendToPassword(hw)}
+                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                >
+                  +{hw}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 15,
+      ruleNumber: 15,
+      title: "Your password must include an affirmation keyword (e.g., YES, OK, TRUE, READY).",
+      isValid: ruleEvaluation.r15.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1">
+          {ruleEvaluation.r15.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <ThumbsUp className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Affirmation verified:</span>
+              <span className="uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r15.matchedAffirmation}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
+              {["YES", "OK", "TRUE", "READY"].map((word) => (
+                <button
+                  key={word}
+                  type="button"
+                  onClick={() => appendToPassword(word)}
+                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                >
+                  +{word}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 16,
+      ruleNumber: 16,
+      title: `Your password must include the security CAPTCHA token: "${SECURITY_TOKEN}".`,
+      isValid: ruleEvaluation.r16.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-2">
+          {ruleEvaluation.r16.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Security token &quot;{SECURITY_TOKEN}&quot; verified!</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1 rounded bg-indigo-950/60 border border-indigo-500/50 font-mono font-bold text-sm tracking-widest text-indigo-300 select-all">
+                {SECURITY_TOKEN}
+              </div>
+              <button
+                type="button"
+                onClick={() => appendToPassword(SECURITY_TOKEN)}
+                className="px-2.5 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-200 font-semibold text-xs cursor-pointer"
+              >
+                + Insert Token
+              </button>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 17,
+      ruleNumber: 17,
+      title: "Your password must include a network protocol (e.g., HTTP, TCP, UDP, SSH, DNS).",
+      isValid: ruleEvaluation.r17.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1">
+          {ruleEvaluation.r17.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <Globe2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Protocol verified:</span>
+              <span className="uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r17.matchedProtocol}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
+              {["TCP", "UDP", "HTTP", "SSH", "DNS"].map((proto) => (
+                <button
+                  key={proto}
+                  type="button"
+                  onClick={() => appendToPassword(proto)}
+                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                >
+                  +{proto}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 18,
+      ruleNumber: 18,
+      title: "Your password must include an operating system name (e.g., Linux, Windows, macOS, Ubuntu).",
+      isValid: ruleEvaluation.r18.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1">
+          {ruleEvaluation.r18.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <Laptop className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Operating System:</span>
+              <span className="capitalize font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r18.matchedOS}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
+              {["Linux", "macOS", "Windows", "Ubuntu", "Android", "iOS"].map((os) => (
+                <button
+                  key={os}
+                  type="button"
+                  onClick={() => appendToPassword(os)}
+                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                >
+                  +{os}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 19,
+      ruleNumber: 19,
+      title: "Your password must include a happy face emoticon (e.g., :) or :-D or ^^).",
+      isValid: ruleEvaluation.r19.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1">
+          {ruleEvaluation.r19.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <Smile className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Emoticon identified:</span>
+              <span className="font-mono px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-bold">
+                {ruleEvaluation.r19.matchedEmoticon}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 text-[12px] font-mono">
+              {[":)", ":-)", ":D", "^^", ";)"].map((face) => (
+                <button
+                  key={face}
+                  type="button"
+                  onClick={() => appendToPassword(face)}
+                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 cursor-pointer"
+                >
+                  +{face}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 20,
+      ruleNumber: 20,
+      title: `Final Vault Clearance: Your password must include the activation key "${ACTIVATION_CLEARANCE}".`,
+      isValid: ruleEvaluation.r20.valid,
+      renderDetails: () => (
+        <div className="mt-1.5 text-xs space-y-1.5">
+          {ruleEvaluation.r20.valid ? (
+            <div className="text-emerald-400 font-semibold flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>✓ Final Clearance Code Activated!</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">Add the final unlock keyword:</span>
+              <button
+                type="button"
+                onClick={() => appendToPassword(ACTIVATION_CLEARANCE)}
+                className="px-2.5 py-1 rounded bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-200 font-bold text-xs cursor-pointer"
+              >
+                +{ACTIVATION_CLEARANCE}
+              </button>
             </div>
           )}
         </div>
@@ -778,16 +1200,16 @@ export default function ThePasswordGameRound({
               }`}
             >
               {isAllSatisfied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-indigo-400" />}
-              <span>{totalSatisfied} / 10 Rules</span>
+              <span>{totalSatisfied} / 20 Rules</span>
             </div>
 
             <button
               type="button"
               onClick={() => setShowAllRules(!showAllRules)}
-              className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition-colors"
-              title={showAllRules ? "Switch to progressive reveal" : "Reveal all 10 rules"}
+              className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition-colors cursor-pointer"
+              title={showAllRules ? "Switch to progressive reveal" : "Reveal all 20 rules"}
             >
-              {showAllRules ? "Progressive" : "View All"}
+              {showAllRules ? "Progressive" : "View All (20)"}
             </button>
           </div>
         </div>
@@ -806,7 +1228,7 @@ export default function ThePasswordGameRound({
                   <button
                     type="button"
                     onClick={handleCopy}
-                    className="hover:text-white transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5"
+                    className="hover:text-white transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 cursor-pointer"
                   >
                     {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     <span>{copied ? "Copied" : "Copy"}</span>
@@ -814,7 +1236,7 @@ export default function ThePasswordGameRound({
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="hover:text-rose-400 transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5"
+                    className="hover:text-rose-400 transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>Clear</span>
@@ -842,7 +1264,7 @@ export default function ThePasswordGameRound({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800 transition-colors cursor-pointer"
                 title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -947,7 +1369,7 @@ export default function ThePasswordGameRound({
             >
               <div className="flex items-center justify-center gap-2 font-bold text-base sm:text-lg">
                 <Sparkles className="w-5 h-5 text-emerald-400 animate-spin" />
-                <span>All 10 Progressive Rules Satisfied!</span>
+                <span>All 20 Progressive Rules Satisfied!</span>
               </div>
               <p className="text-xs text-emerald-400/80">
                 The Master Security Vault is primed. Click below to submit and finalize the Tech Relay challenge.
@@ -955,8 +1377,8 @@ export default function ThePasswordGameRound({
             </motion.div>
           ) : (
             <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-              <span>Gate Status: <strong>{totalSatisfied} of 10 Rules Met</strong></span>
-              <span>All 10 rules must turn green to unlock</span>
+              <span>Gate Status: <strong>{totalSatisfied} of 20 Rules Met</strong></span>
+              <span>All 20 rules must turn green to unlock</span>
             </div>
           )}
 
@@ -983,7 +1405,7 @@ export default function ThePasswordGameRound({
             ) : (
               <>
                 <Lock className="w-5 h-5 text-slate-500" />
-                <span>Complete All 10 Rules To Unlock ({totalSatisfied}/10)</span>
+                <span>Complete All 20 Rules To Unlock ({totalSatisfied}/20)</span>
               </>
             )}
           </button>

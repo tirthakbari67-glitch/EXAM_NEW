@@ -2269,7 +2269,7 @@ export default function TechRelayAdminPage() {
                             <span>✱</span> <span>The Password Game Challenge (Round 5) Active</span>
                           </div>
                           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", margin: "4px 0 10px", lineHeight: 1.5 }}>
-                            Students dynamically synthesize a master password through the progressive 10-rule validation engine inspired by The Password Game:
+                            Students dynamically synthesize a master password through the progressive 20-rule validation engine inspired by The Password Game:
                           </p>
 
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
@@ -2301,7 +2301,37 @@ export default function TechRelayAdminPage() {
                               <strong style={{ color: "#fb7185" }}>Rule 9:</strong> Current Year (2026)
                             </div>
                             <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
-                              <strong style={{ color: "#38bdf8" }}>Rule 10:</strong> Periodic Table Element Symbol (Na, He, Au, etc.)
+                              <strong style={{ color: "#38bdf8" }}>Rule 10:</strong> Periodic Table Element (Na, He, Au, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#818cf8" }}>Rule 11:</strong> Programming Language (Python, Rust, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#facc15" }}>Rule 12:</strong> Moon Phase Emoji (🌕, 🌑, 🌓, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#f43f5e" }}>Rule 13:</strong> Hex Color Code (#FFF, #000, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#4ade80" }}>Rule 14:</strong> Hardware Device (CPU, RAM, ROUTER, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#60a5fa" }}>Rule 15:</strong> Affirmation Keyword (YES, OK, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#c084fc" }}>Rule 16:</strong> Security Token (NEXUS)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#2dd4bf" }}>Rule 17:</strong> Network Protocol (HTTP, TCP, SSH, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#fb923c" }}>Rule 18:</strong> Operating System (Linux, macOS, etc.)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#e879f9" }}>Rule 19:</strong> Emoticon (:), :-), :D, ^^)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#34d399" }}>Rule 20:</strong> Master Clearance (CLEAR)
                             </div>
                           </div>
                         </div>
