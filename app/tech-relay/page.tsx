@@ -1125,9 +1125,6 @@ export default function TechRelayPage() {
 
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
-          ← Back
-        </button>
         <h1 className={styles.title}>Tech Relay</h1>
         <p className={styles.subtitle}>Complete all 5 rounds to conquer the challenge</p>
 
