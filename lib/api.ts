@@ -879,6 +879,8 @@ export interface TechRelayProgress {
   completed_at: string | null;
   r1_answer?: string;
   r3_solved?: number[];
+  stopped_by_admin?: boolean;
+  final_score?: number;
 }
 
 export interface TechRelaySubmitResult {
@@ -970,6 +972,9 @@ export interface TechRelayParticipant {
   started_at: string | null;
   completed_at: string | null;
   warnings: number;
+  score?: number;
+  stopped_by_admin?: boolean;
+  cleared_rounds?: number;
 }
 
 export async function fetchTechRelayAdminStudents(
@@ -1031,6 +1036,18 @@ export async function removeTechRelayStudent(
   });
 }
 
+export async function forceStopTechRelay(
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string; affected_count: number }> {
+  return adminFetch<{ success: boolean; message: string; affected_count: number }>(
+    "/tech-relay/admin/force-stop",
+    {
+      method: "POST",
+      body: JSON.stringify({ relay_name: relayName }),
+    }
+  );
+}
+
 export interface TechRelayLeaderboardEntry {
   student_id: string;
   usn: string;
@@ -1042,6 +1059,8 @@ export interface TechRelayLeaderboardEntry {
   is_completed: boolean;
   started_at: string;
   completed_at: string | null;
+  score?: number;
+  stopped_by_admin?: boolean;
 }
 
 export async function fetchTechRelayLeaderboard(

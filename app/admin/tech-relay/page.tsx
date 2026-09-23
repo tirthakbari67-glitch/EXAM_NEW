@@ -16,6 +16,7 @@ import {
   resetTechRelayStudent,
   resetAllTechRelay,
   removeTechRelayStudent,
+  forceStopTechRelay,
   blockAdminStudent,
   unblockAdminStudent,
   type TechRelayRound,
@@ -680,6 +681,28 @@ export default function TechRelayAdminPage() {
     }
   };
 
+  const handleForceStopRelay = async () => {
+    if (
+      !confirm(
+        "🛑 DANGER: FORCE STOP EXAM\n\nAre you sure you want to forcefully stop Tech Relay for ALL active students?\n\n• The exam will immediately deactivate and conclude.\n• Each student's progress will be frozen at their current stage.\n• Final results will be generated based on rounds cleared up to this point (20 pts per cleared round, max 100).\n• Student screens will instantly transition to their final score result screen."
+      )
+    ) {
+      return;
+    }
+    try {
+      setSaving(true);
+      const res = await forceStopTechRelay("Tech Relay");
+      setIsActive(false);
+      await loadData();
+      await refreshObserver();
+      alert(`🛑 Tech Relay exam officially stopped!\n\n${res.affected_count || 0} active student exam session(s) finalized and their results generated up to their stopping point.`);
+    } catch (err: any) {
+      alert("Force stop failed: " + (err?.detail || err?.message || String(err)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleToggleBlock = async (student: TechRelayParticipant) => {
     const action = student.is_blocked ? "unblock" : "block";
     if (!confirm(`Are you sure you want to ${action} ${student.name}?`)) return;
@@ -1048,6 +1071,23 @@ export default function TechRelayAdminPage() {
             🔄 Reset Tournament
           </button>
 
+          <button
+            className={styles.backButton}
+            onClick={handleForceStopRelay}
+            disabled={saving}
+            style={{
+              background: "linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(220, 38, 38, 0.45))",
+              border: "1px solid #ef4444",
+              color: "#fff",
+              fontWeight: 800,
+              boxShadow: "0 0 14px rgba(239, 68, 68, 0.35)",
+              letterSpacing: "0.3px",
+            }}
+            title="Immediately stop exam and finalize results for all active students up to their stopping point"
+          >
+            🛑 Force Stop Exam
+          </button>
+
           <div className={styles.tabRow}>
             <button
               className={`${styles.tab} ${activeTab === "observer" ? styles.tabActive : ""}`}
@@ -1320,15 +1360,35 @@ export default function TechRelayAdminPage() {
                                     borderRadius: 6,
                                     fontSize: 11,
                                     fontWeight: 800,
-                                    background: isCompleted ? "rgba(52, 211, 153, 0.2)" : "rgba(99, 102, 241, 0.2)",
-                                    color: isCompleted ? "#34d399" : "#a5b4fc",
-                                    border: isCompleted ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(99, 102, 241, 0.4)",
+                                    background: p.stopped_by_admin
+                                      ? "rgba(239, 68, 68, 0.2)"
+                                      : isCompleted
+                                      ? "rgba(52, 211, 153, 0.2)"
+                                      : "rgba(99, 102, 241, 0.2)",
+                                    color: p.stopped_by_admin
+                                      ? "#f87171"
+                                      : isCompleted
+                                      ? "#34d399"
+                                      : "#a5b4fc",
+                                    border: p.stopped_by_admin
+                                      ? "1px solid rgba(239, 68, 68, 0.4)"
+                                      : isCompleted
+                                      ? "1px solid rgba(52, 211, 153, 0.4)"
+                                      : "1px solid rgba(99, 102, 241, 0.4)",
                                   }}
                                 >
-                                  {isCompleted ? "🏆 DONE" : `R${roundNum}`}
+                                  {p.stopped_by_admin
+                                    ? `🛑 STOPPED R${roundNum}`
+                                    : isCompleted
+                                    ? "🏆 DONE"
+                                    : `R${roundNum}`}
                                 </span>
                                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
-                                  {isCompleted ? "All 5 Cleared" : roundTitle}
+                                  {p.stopped_by_admin
+                                    ? `Halted at ${roundTitle}`
+                                    : isCompleted
+                                    ? "All 5 Cleared"
+                                    : roundTitle}
                                 </span>
                               </>
                             )}
@@ -1336,11 +1396,13 @@ export default function TechRelayAdminPage() {
                         </td>
 
                         <td>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "#cbd5e1" }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: p.stopped_by_admin ? "#fca5a5" : "#cbd5e1" }}>
                             {!p.has_started
                               ? "—"
+                              : p.stopped_by_admin
+                              ? `${p.cleared_rounds ?? 0}/5 Cleared (${p.score ?? 0} pts)`
                               : isCompleted
-                              ? "5/5 Cleared"
+                              ? "5/5 Cleared (100 pts)"
                               : `Q${(p.current_question_index || 0) + 1}`}
                           </span>
                         </td>
@@ -1348,18 +1410,39 @@ export default function TechRelayAdminPage() {
                         <td>
                           <span
                             className={
-                              isCompleted
+                              p.stopped_by_admin
+                                ? ""
+                                : isCompleted
                                 ? styles.completedBadge
                                 : p.has_started
                                 ? styles.inProgressBadge
                                 : ""
                             }
                             style={{
-                              background: !p.has_started ? "rgba(255,255,255,0.05)" : undefined,
-                              color: !p.has_started ? "rgba(255,255,255,0.4)" : undefined,
+                              background: p.stopped_by_admin
+                                ? "rgba(239, 68, 68, 0.18)"
+                                : !p.has_started
+                                ? "rgba(255,255,255,0.05)"
+                                : undefined,
+                              color: p.stopped_by_admin
+                                ? "#f87171"
+                                : !p.has_started
+                                ? "rgba(255,255,255,0.4)"
+                                : undefined,
+                              border: p.stopped_by_admin ? "1px solid rgba(239, 68, 68, 0.4)" : undefined,
+                              padding: p.stopped_by_admin ? "4px 10px" : undefined,
+                              borderRadius: p.stopped_by_admin ? "6px" : undefined,
+                              fontWeight: p.stopped_by_admin ? 800 : undefined,
+                              fontSize: p.stopped_by_admin ? "11px" : undefined,
                             }}
                           >
-                            {isCompleted ? "COMPLETED" : p.has_started ? "IN PROGRESS" : "NOT STARTED"}
+                            {p.stopped_by_admin
+                              ? `🛑 STOPPED (${p.score ?? 0} PTS)`
+                              : isCompleted
+                              ? "COMPLETED"
+                              : p.has_started
+                              ? "IN PROGRESS"
+                              : "NOT STARTED"}
                           </span>
                         </td>
 
@@ -1381,10 +1464,12 @@ export default function TechRelayAdminPage() {
 
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700 }}>
-                            {isCompleted ? (
+                            {p.stopped_by_admin ? (
+                              <span style={{ color: "#f87171" }}>🛑 STOPPED</span>
+                            ) : isCompleted ? (
                               <span style={{ color: "#34d399" }}>FINISHED</span>
                             ) : p.is_blocked ? (
-                              <span style={{ color: "#f87171" }}>STOPPED</span>
+                              <span style={{ color: "#f87171" }}>BLOCKED</span>
                             ) : p.has_started ? (
                               <>
                                 <span className={styles.liveDot} />
@@ -1579,6 +1664,7 @@ export default function TechRelayAdminPage() {
                   <th>Rank</th>
                   <th>Student</th>
                   <th>Branch</th>
+                  <th>Score</th>
                   <th>Current Round</th>
                   <th>Completed Rounds</th>
                   <th>Total Attempts</th>
@@ -1598,19 +1684,57 @@ export default function TechRelayAdminPage() {
                       <div style={{ fontSize: 11, opacity: 0.5 }}>{entry.usn}</div>
                     </td>
                     <td>{entry.branch || "—"}</td>
+                    <td style={{ fontWeight: 800, color: "#38bdf8", fontSize: 13 }}>
+                      {entry.score ?? ((entry.rounds_completed || 0) * 20)} / 100
+                    </td>
                     <td>
                       <span
                         className={entry.is_completed || entry.current_round > 5 ? styles.completedBadge : styles.roundBadge}
-                        style={entry.is_completed || entry.current_round > 5 ? { background: "rgba(52, 211, 153, 0.15)", color: "#34d399", border: "1px solid rgba(52, 211, 153, 0.4)" } : undefined}
+                        style={
+                          entry.stopped_by_admin
+                            ? { background: "rgba(239, 68, 68, 0.15)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.4)" }
+                            : entry.is_completed || entry.current_round > 5
+                            ? { background: "rgba(52, 211, 153, 0.15)", color: "#34d399", border: "1px solid rgba(52, 211, 153, 0.4)" }
+                            : undefined
+                        }
                       >
-                        {entry.is_completed || entry.current_round > 5 ? "🏆 All Cleared (5/5)" : `Round ${entry.current_round}`}
+                        {entry.stopped_by_admin
+                          ? `🛑 Halted at R${entry.current_round}`
+                          : entry.is_completed || entry.current_round > 5
+                          ? "🏆 All Cleared (5/5)"
+                          : `Round ${entry.current_round}`}
                       </span>
                     </td>
                     <td>{entry.rounds_completed} / 5</td>
                     <td>{entry.total_attempts}</td>
                     <td>
-                      <span className={entry.is_completed ? styles.completedBadge : styles.inProgressBadge}>
-                        {entry.is_completed ? "COMPLETED" : "IN PROGRESS"}
+                      <span
+                        className={
+                          entry.stopped_by_admin
+                            ? ""
+                            : entry.is_completed
+                            ? styles.completedBadge
+                            : styles.inProgressBadge
+                        }
+                        style={
+                          entry.stopped_by_admin
+                            ? {
+                                background: "rgba(239, 68, 68, 0.18)",
+                                color: "#f87171",
+                                border: "1px solid rgba(239, 68, 68, 0.4)",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                fontSize: "11px",
+                                fontWeight: 800,
+                              }
+                            : undefined
+                        }
+                      >
+                        {entry.stopped_by_admin
+                          ? "🛑 STOPPED"
+                          : entry.is_completed
+                          ? "COMPLETED"
+                          : "IN PROGRESS"}
                       </span>
                     </td>
                     <td style={{ fontSize: 12 }}>

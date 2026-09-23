@@ -846,6 +846,24 @@ export default function TechRelayPage() {
     loadData();
   }, [loadData, router]);
 
+  // ── Polling for Admin Force Stop or Remote Completion ──────
+  useEffect(() => {
+    if (!progress || progress.is_completed || isTerminated) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latest = await fetchTechRelayProgress();
+        if (latest && latest.is_completed) {
+          setProgress(latest);
+        }
+      } catch {
+        // Silently ignore background polling errors
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [progress, isTerminated]);
+
   // ── Submit Handler ───────────────────────────────────────────
   async function handleSubmit(overrideAnswer?: string, overrideQIdx?: number) {
     if (submitting || isTerminated) return;
@@ -997,38 +1015,177 @@ export default function TechRelayPage() {
   const isCompleted = progress?.is_completed || false;
   const roundsCompleted = progress?.rounds_completed || [];
 
-  // ── Completion Screen ────────────────────────────────────────
+  // ── Completion / Results Screen ───────────────────────────────
   if (isCompleted) {
-    const totalAttempts = roundsCompleted.reduce((sum, r) => sum + (r.attempts || 1), 0);
+    const cleanCompleted = roundsCompleted.filter((r: any) => !(typeof r === "object" && r?._meta));
+    const totalAttempts = cleanCompleted.reduce((sum, r) => sum + (r.attempts || 1), 0);
+    const clearedRoundsSet = new Set(cleanCompleted.map((r: any) => r.round));
+    const clearedCount = clearedRoundsSet.size;
+    const isStoppedByAdmin = Boolean(progress?.stopped_by_admin || clearedCount < 5);
+    const finalScore = progress?.final_score ?? (clearedCount * 20);
+
+    const roundNames = [
+      { num: 1, name: "Identity Clues", max: 20 },
+      { num: 2, name: "Password Verification Gate", max: 20 },
+      { num: 3, name: "HTML Basic Assessment", max: 20 },
+      { num: 4, name: "Tech Knowledge Quiz", max: 20 },
+      { num: 5, name: "Master Key Vault", max: 20 },
+    ];
+
     return (
       <div className={styles.container}>
-        <Confetti active={showConfetti} />
+        <Confetti active={showConfetti && !isStoppedByAdmin} />
         <div className={styles.header}>
           <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
             ← Dashboard
           </button>
         </div>
-        <div className={styles.completionContainer}>
-          <div className={styles.trophyIcon}>🏆</div>
-          <h1 className={styles.completionTitle}>Relay Complete!</h1>
+        <div className={styles.completionContainer} style={{ maxWidth: 680 }}>
+          <div className={styles.trophyIcon} style={{ fontSize: isStoppedByAdmin ? 64 : 72 }}>
+            {isStoppedByAdmin ? "🛑" : "🏆"}
+          </div>
+          <h1
+            className={styles.completionTitle}
+            style={
+              isStoppedByAdmin
+                ? {
+                    background: "linear-gradient(135deg, #f87171, #ef4444, #dc2626)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }
+                : undefined
+            }
+          >
+            {isStoppedByAdmin ? "Exam Concluded by Administrator" : "Relay Complete!"}
+          </h1>
           <p className={styles.completionSubtitle}>
-            You&#39;ve conquered all 5 rounds of the Tech Relay challenge
+            {isStoppedByAdmin
+              ? "The administrator has officially concluded the exam session. Your performance up to the point of stoppage has been evaluated and recorded as your final result."
+              : "Outstanding! You conquered all 5 challenge rounds of Tech Relay."}
           </p>
-          <div className={styles.statsGrid}>
+
+          {/* Key Metrics */}
+          <div className={styles.statsGrid} style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+            <div
+              className={styles.statItem}
+              style={{
+                background: "rgba(56, 189, 248, 0.08)",
+                borderColor: "rgba(56, 189, 248, 0.2)",
+              }}
+            >
+              <p className={styles.statValue} style={{ color: "#38bdf8" }}>
+                {finalScore} <span style={{ fontSize: 16, opacity: 0.6 }}>/ 100</span>
+              </p>
+              <p className={styles.statLabel}>Final Score</p>
+            </div>
             <div className={styles.statItem}>
-              <p className={styles.statValue}>5/5</p>
+              <p className={styles.statValue} style={{ color: isStoppedByAdmin ? "#fbbf24" : "#34d399" }}>
+                {clearedCount}/5
+              </p>
               <p className={styles.statLabel}>Rounds Cleared</p>
             </div>
             <div className={styles.statItem}>
               <p className={styles.statValue}>{totalAttempts}</p>
               <p className={styles.statLabel}>Total Attempts</p>
             </div>
-            <div className={styles.statItem}>
-              <p className={styles.statValue}>✓</p>
-              <p className={styles.statLabel}>All Passed</p>
+          </div>
+
+          {/* Round-by-Round Breakdown Card */}
+          <div
+            style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 16,
+              padding: "20px 24px",
+              marginBottom: 28,
+              textAlign: "left",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "rgba(255, 255, 255, 0.5)",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                marginBottom: 14,
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>Round-by-Round Result</span>
+              <span>Points Earned</span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {roundNames.map((r) => {
+                const isCleared = clearedRoundsSet.has(r.num);
+                const roundInfo = rounds.find((rnd) => rnd.round_number === r.num);
+                const displayTitle = roundInfo?.round_title || r.name;
+
+                return (
+                  <div
+                    key={`res-r-${r.num}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      background: isCleared
+                        ? "rgba(52, 211, 153, 0.08)"
+                        : "rgba(255, 255, 255, 0.02)",
+                      border: isCleared
+                        ? "1px solid rgba(52, 211, 153, 0.25)"
+                        : "1px solid rgba(255, 255, 255, 0.05)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 12,
+                          fontWeight: 800,
+                          background: isCleared ? "#34d399" : "rgba(255, 255, 255, 0.1)",
+                          color: isCleared ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
+                        }}
+                      >
+                        {isCleared ? "✓" : r.num}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: isCleared ? "#fff" : "rgba(255, 255, 255, 0.5)" }}>
+                          Round {r.num}: {displayTitle}
+                        </div>
+                        <div style={{ fontSize: 11, color: isCleared ? "#34d399" : "rgba(255, 255, 255, 0.3)" }}>
+                          {isCleared ? "Cleared Successfully" : isStoppedByAdmin ? "Incomplete at Stoppage" : "Not Cleared"}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: isCleared ? "#34d399" : "rgba(255, 255, 255, 0.3)",
+                      }}
+                    >
+                      {isCleared ? `+${r.max} pts` : "0 pts"}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <button className={styles.submitBtn} onClick={() => router.push("/dashboard")}>
+
+          <button
+            className={styles.submitBtn}
+            onClick={() => router.push("/dashboard")}
+            style={{ width: "100%", maxWidth: 320, margin: "0 auto" }}
+          >
             ← Return to Dashboard
           </button>
         </div>

@@ -55,6 +55,9 @@ class StartRelayRequest(BaseModel):
     start_code: str
     relay_name: str = "Tech Relay"
 
+class ForceStopRelayRequest(BaseModel):
+    relay_name: str = "Tech Relay"
+
 
 
 # ── Admin Dependency ─────────────────────────────────────────────
@@ -715,6 +718,9 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             r1_answer = None
             r3_solved = []
 
+            stopped_by_admin = False
+            final_score = len(clean_completed) * 20
+
             for item in rounds_completed:
                 if isinstance(item, dict):
                     if item.get("_meta"):
@@ -723,6 +729,10 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                             r1_answer = item["r1_answer"]
                         if item.get("r3_solved"):
                             r3_solved = item["r3_solved"]
+                        if item.get("stopped_by_admin"):
+                            stopped_by_admin = True
+                        if "final_score" in item:
+                            final_score = item["final_score"]
                     else:
                         clean_completed.append(item)
                         if item.get("round") == 1 and item.get("user_answer"):
@@ -742,6 +752,8 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                 "completed_at": row.get("completed_at"),
                 "r1_answer": r1_answer,
                 "r3_solved": r3_solved,
+                "stopped_by_admin": stopped_by_admin,
+                "final_score": final_score,
             }
 
         return {
@@ -753,6 +765,8 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "completed_at": None,
             "r1_answer": None,
             "r3_solved": [],
+            "stopped_by_admin": False,
+            "final_score": 0,
         }
     except Exception as e:
         print(f"[TECH_RELAY] Progress fetch note: {e}")
@@ -765,6 +779,8 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "completed_at": None,
             "r1_answer": None,
             "r3_solved": [],
+            "stopped_by_admin": False,
+            "final_score": 0,
         }
 
 
@@ -1582,6 +1598,8 @@ async def admin_get_relay_students(
 
             rounds_completed = []
             current_q_idx = 0
+            stopped_by_admin = False
+            meta_info = {}
             if p:
                 raw_rc = p.get("rounds_completed", [])
                 if isinstance(raw_rc, str):
@@ -1591,9 +1609,15 @@ async def admin_get_relay_students(
                         raw_rc = []
                 for item in raw_rc:
                     if isinstance(item, dict) and item.get("_meta"):
+                        meta_info = item
                         current_q_idx = item.get("current_question_index", 0)
+                        if item.get("stopped_by_admin"):
+                            stopped_by_admin = True
                     else:
                         rounds_completed.append(item)
+
+            cleared_rounds = len(rounds_completed)
+            score = meta_info.get("final_score", cleared_rounds * 20 if (p and p.get("is_completed")) else cleared_rounds * 20)
 
             participants.append({
                 "student_id": sid,
@@ -1605,6 +1629,9 @@ async def admin_get_relay_students(
                 "current_round": p.get("current_round", 1) if p else 1,
                 "current_question_index": current_q_idx,
                 "rounds_completed": rounds_completed,
+                "cleared_rounds": cleared_rounds,
+                "score": score,
+                "stopped_by_admin": stopped_by_admin,
                 "is_completed": p.get("is_completed", False) if p else False,
                 "started_at": p.get("started_at") if p else None,
                 "completed_at": p.get("completed_at") if p else None,
@@ -1823,6 +1850,128 @@ async def admin_reset_all_relay(body: ResetRelayRequest, _: bool = Depends(verif
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/admin/force-stop")
+async def admin_force_stop_relay(body: ForceStopRelayRequest, _: bool = Depends(verify_admin)):
+    """
+    Forcefully stop Tech Relay for all active participants.
+    Deactivates the relay config and freezes every in-progress student's state at their current point,
+    calculating their score up to their stopping point (20 pts per cleared round, max 100),
+    marking them as submitted, and writing official records to both tech_relay_progress and exam_results.
+    """
+    try:
+        db = get_supabase()
+        relay_name = body.relay_name
+        now = datetime.now(timezone.utc).isoformat()
+
+        # 1. Deactivate relay config
+        try:
+            db.table("tech_relay_config") \
+                .update({"is_active": False}) \
+                .eq("relay_name", relay_name) \
+                .execute()
+        except Exception as e_cfg:
+            print(f"[TECH_RELAY] Deactivate config error: {e_cfg}")
+
+        # 2. Fetch all participants in this relay
+        progress_res = db.table("tech_relay_progress") \
+            .select("*") \
+            .eq("relay_name", relay_name) \
+            .execute()
+
+        all_prog = progress_res.data or []
+        affected_count = 0
+
+        for p in all_prog:
+            # If already completed naturally, preserve their completed status
+            if p.get("is_completed"):
+                continue
+
+            student_id = p["student_id"]
+            raw_rc = p.get("rounds_completed", [])
+            if isinstance(raw_rc, str):
+                try:
+                    raw_rc = json.loads(raw_rc)
+                except Exception:
+                    raw_rc = []
+
+            clean_rc = [r for r in raw_rc if not (isinstance(r, dict) and r.get("_meta"))]
+            meta_info = next((r for r in raw_rc if isinstance(r, dict) and r.get("_meta")), {})
+
+            cleared_rounds = len(clean_rc)
+            score = min(100, cleared_rounds * 20)
+
+            meta_info["stopped_by_admin"] = True
+            meta_info["final_score"] = score
+            meta_info["cleared_rounds"] = cleared_rounds
+            meta_info["stopped_at_round"] = p.get("current_round", 1)
+            meta_info["stopped_at"] = now
+
+            final_rc = clean_rc + [meta_info]
+
+            # Update tech_relay_progress
+            db.table("tech_relay_progress").update({
+                "is_completed": True,
+                "completed_at": now,
+                "rounds_completed": json.dumps(final_rc),
+            }).eq("id", p["id"]).execute()
+
+            # Update exam_status to submitted
+            try:
+                es_rows = db.table("exam_status") \
+                    .select("id") \
+                    .eq("student_id", student_id) \
+                    .ilike("exam_name", relay_name) \
+                    .execute()
+                if es_rows.data and len(es_rows.data) > 0:
+                    for rec in es_rows.data:
+                        db.table("exam_status").update({
+                            "status": "submitted",
+                            "submitted_at": now,
+                        }).eq("id", rec["id"]).execute()
+                else:
+                    db.table("exam_status").insert({
+                        "student_id": student_id,
+                        "exam_name": relay_name,
+                        "status": "submitted",
+                        "warnings": 0,
+                        "started_at": p.get("started_at") or now,
+                        "submitted_at": now,
+                    }).execute()
+            except Exception as e_es:
+                print(f"[TECH_RELAY] exam_status force stop note: {e_es}")
+
+            # Upsert into exam_results for global grading, export, and faculty visibility
+            try:
+                res_payload = {
+                    "student_id": student_id,
+                    "exam_name": relay_name,
+                    "score": score,
+                    "total_marks": 100,
+                    "submitted_at": now,
+                    "answers": json.dumps({
+                        "type": "tech_relay",
+                        "stopped_by_admin": True,
+                        "cleared_rounds": cleared_rounds,
+                        "stopped_at_round": p.get("current_round", 1),
+                        "rounds_completed": clean_rc,
+                    })
+                }
+                db.table("exam_results").upsert(res_payload, on_conflict="student_id,exam_name").execute()
+            except Exception as e_res:
+                print(f"[TECH_RELAY] exam_results upsert note: {e_res}")
+
+            affected_count += 1
+
+        return {
+            "success": True,
+            "message": f"Tech Relay stopped. {affected_count} active contestant(s) finalized up to their current point.",
+            "affected_count": affected_count,
+        }
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_force_stop_relay error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/admin/student/{student_id}")
 async def admin_remove_student(student_id: str, relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
     """Remove student record from tech_relay_progress."""
@@ -1873,7 +2022,11 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
                     rounds_completed = []
 
             clean_rc = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
+            meta_info = next((r for r in rounds_completed if isinstance(r, dict) and r.get("_meta")), {})
             total_attempts = sum(r.get("attempts", 1) for r in clean_rc)
+            stopped_by_admin = meta_info.get("stopped_by_admin", False)
+            cleared_rounds = len(clean_rc)
+            score = meta_info.get("final_score", cleared_rounds * 20)
 
             leaderboard.append({
                 "student_id": p["student_id"],
@@ -1881,12 +2034,20 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
                 "name": student.get("name", "Unknown"),
                 "branch": student.get("branch", ""),
                 "current_round": p["current_round"],
-                "rounds_completed": len(clean_rc),
+                "rounds_completed": cleared_rounds,
+                "score": score,
+                "stopped_by_admin": stopped_by_admin,
                 "total_attempts": total_attempts,
                 "is_completed": p["is_completed"],
                 "started_at": p["started_at"],
                 "completed_at": p["completed_at"],
             })
+
+        # Sort leaderboard by score descending, then by completed_at ascending
+        leaderboard.sort(key=lambda x: (
+            x.get("score", 0),
+            1 if x.get("is_completed") else 0
+        ), reverse=True)
 
         return {"leaderboard": leaderboard}
     except Exception as e:
