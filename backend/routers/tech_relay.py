@@ -693,9 +693,36 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
         return {"rounds": []}
 
 
+def extract_mcq_scores(rounds_completed: list):
+    """
+    Extracts separate MCQ scores for Round 3 (HTML Basic Assessment) and Round 4 (Tech Quiz).
+    Official assessment score only counts Round 3 and Round 4 MCQs (each out of 10, total out of 20).
+    """
+    r3_score = 0
+    r4_score = 0
+    meta_info = {}
+
+    for r in (rounds_completed or []):
+        if isinstance(r, dict):
+            if r.get("_meta"):
+                meta_info = r
+            elif r.get("round") == 3:
+                r3_score = max(r3_score, int(r.get("score") or r.get("questions_solved") or 0))
+            elif r.get("round") == 4:
+                r4_score = max(r4_score, int(r.get("score") or r.get("questions_solved") or 0))
+
+    if "r3_score" in meta_info and meta_info["r3_score"] is not None:
+        r3_score = max(r3_score, int(meta_info["r3_score"]))
+    if "r4_score" in meta_info and meta_info["r4_score"] is not None:
+        r4_score = max(r4_score, int(meta_info["r4_score"]))
+
+    total_score = r3_score + r4_score  # Total MCQs correct out of 20
+    return r3_score, r4_score, total_score
+
+
 @router.get("/progress")
 async def get_relay_progress(current: dict = Depends(get_current_student)):
-    """Get current student's relay progress including sub-question index."""
+    """Get current student's relay progress including separate Round 3 & Round 4 MCQ scores."""
     db = get_supabase()
     student_id = current["student_id"]
     try:
@@ -717,9 +744,7 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             clean_completed = []
             r1_answer = None
             r3_solved = []
-
             stopped_by_admin = False
-            final_score = len(clean_completed) * 20
 
             for item in rounds_completed:
                 if isinstance(item, dict):
@@ -731,14 +756,14 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                             r3_solved = item["r3_solved"]
                         if item.get("stopped_by_admin"):
                             stopped_by_admin = True
-                        if "final_score" in item:
-                            final_score = item["final_score"]
                     else:
                         clean_completed.append(item)
                         if item.get("round") == 1 and item.get("user_answer"):
                             r1_answer = item["user_answer"]
                         if item.get("round") == 3 and item.get("solved_indices"):
                             r3_solved = item["solved_indices"]
+
+            r3_score, r4_score, final_score = extract_mcq_scores(rounds_completed)
 
             return {
                 "id": row.get("id"),
@@ -753,7 +778,10 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                 "r1_answer": r1_answer,
                 "r3_solved": r3_solved,
                 "stopped_by_admin": stopped_by_admin,
+                "r3_score": r3_score,
+                "r4_score": r4_score,
                 "final_score": final_score,
+                "total_mcq": 20,
             }
 
         return {
@@ -766,7 +794,10 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "r1_answer": None,
             "r3_solved": [],
             "stopped_by_admin": False,
+            "r3_score": 0,
+            "r4_score": 0,
             "final_score": 0,
+            "total_mcq": 20,
         }
     except Exception as e:
         print(f"[TECH_RELAY] Progress fetch note: {e}")
@@ -780,7 +811,10 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "r1_answer": None,
             "r3_solved": [],
             "stopped_by_admin": False,
+            "r3_score": 0,
+            "r4_score": 0,
             "final_score": 0,
+            "total_mcq": 20,
         }
 
 
@@ -1182,9 +1216,24 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
                 if i < len(submitted_answers) and int(submitted_answers[i]) == int(q.get("correct", 0)):
                     correct_count += 1
 
+            meta_info["r3_score"] = correct_count
+
             if correct_count < 3:
+                # Save partial progress in meta_info so MCQ score is tracked even on partial attempt
+                rounds_completed.append(meta_info)
+                progress_data = {
+                    "student_id": student_id,
+                    "relay_name": relay_name,
+                    "current_round": 3,
+                    "rounds_completed": json.dumps(rounds_completed),
+                    "is_completed": False
+                }
+                if progress:
+                    db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
                 return {
                     "success": False,
+                    "score": correct_count,
+                    "total": len(html_questions),
                     "message": f"You scored {correct_count}/10. At least 3 correct answers are required to unlock Round 4. Check your answers and try again!"
                 }
 
@@ -1202,6 +1251,7 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
                 "questions_solved": correct_count
             })
             meta_info["current_question_index"] = 0
+            meta_info["r3_score"] = correct_count
             rounds_completed.append(meta_info)
 
             progress_data = {
@@ -1337,9 +1387,24 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             if i < len(submitted_answers) and int(submitted_answers[i]) == int(q.get("correct", 0)):
                 correct_count += 1
 
+        meta_info["r4_score"] = correct_count
+
         if correct_count < 4:
+            # Save partial progress in meta_info so MCQ score is tracked even on partial attempt
+            rounds_completed.append(meta_info)
+            progress_data = {
+                "student_id": student_id,
+                "relay_name": relay_name,
+                "current_round": 4,
+                "rounds_completed": json.dumps(rounds_completed),
+                "is_completed": False
+            }
+            if progress:
+                db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
             return {
                 "success": False,
+                "score": correct_count,
+                "total": len(quiz_questions),
                 "message": f"You scored {correct_count}/10. Minimum 4 correct answers required to unlock Round 5. Check your answers and try again!"
             }
 
@@ -1356,6 +1421,7 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             "total": len(quiz_questions)
         })
         meta_info["current_question_index"] = 0
+        meta_info["r4_score"] = correct_count
         rounds_completed.append(meta_info)
 
         progress_data = {
@@ -1406,6 +1472,12 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             "questions_solved": 1
         })
         meta_info["current_question_index"] = 0
+
+        # Calculate official MCQ score from Round 3 and Round 4 (out of 20)
+        r3_score, r4_score, total_mcq_score = extract_mcq_scores(rounds_completed + [meta_info])
+        meta_info["r3_score"] = r3_score
+        meta_info["r4_score"] = r4_score
+        meta_info["final_score"] = total_mcq_score
         rounds_completed.append(meta_info)
 
         progress_data = {
@@ -1421,6 +1493,37 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         else:
             progress_data["started_at"] = now
             db.table("tech_relay_progress").insert(progress_data).execute()
+
+        # Update exam_status to submitted
+        try:
+            db.table("exam_status").update({
+                "status": "submitted",
+                "submitted_at": now
+            }).eq("student_id", student_id).ilike("exam_name", relay_name).execute()
+        except Exception:
+            pass
+
+        # Upsert into exam_results for official scoring (Score = R3 + R4 out of 20)
+        try:
+            db.table("exam_results").upsert({
+                "student_id": student_id,
+                "exam_name": relay_name,
+                "score": total_mcq_score,
+                "total_marks": 20,
+                "submitted_at": now,
+                "answers": json.dumps({
+                    "type": "tech_relay",
+                    "r3_score": r3_score,
+                    "r4_score": r4_score,
+                    "r3_total": 10,
+                    "r4_total": 10,
+                    "total_score": total_mcq_score,
+                    "total_mcq": 20,
+                    "all_rounds_cleared": True
+                })
+            }, on_conflict="student_id,exam_name").execute()
+        except Exception as e_res:
+            print(f"[TECH_RELAY] exam_results r5 upsert note: {e_res}")
 
         return {
             "success": True,
@@ -1616,8 +1719,9 @@ async def admin_get_relay_students(
                     else:
                         rounds_completed.append(item)
 
+            r3_score, r4_score, total_mcq_score = extract_mcq_scores(raw_rc if p else [])
             cleared_rounds = len(rounds_completed)
-            score = meta_info.get("final_score", cleared_rounds * 20 if (p and p.get("is_completed")) else cleared_rounds * 20)
+            score = total_mcq_score
 
             participants.append({
                 "student_id": sid,
@@ -1631,6 +1735,9 @@ async def admin_get_relay_students(
                 "rounds_completed": rounds_completed,
                 "cleared_rounds": cleared_rounds,
                 "score": score,
+                "r3_score": r3_score,
+                "r4_score": r4_score,
+                "total_mcq": 20,
                 "stopped_by_admin": stopped_by_admin,
                 "is_completed": p.get("is_completed", False) if p else False,
                 "started_at": p.get("started_at") if p else None,
@@ -1897,11 +2004,13 @@ async def admin_force_stop_relay(body: ForceStopRelayRequest, _: bool = Depends(
             clean_rc = [r for r in raw_rc if not (isinstance(r, dict) and r.get("_meta"))]
             meta_info = next((r for r in raw_rc if isinstance(r, dict) and r.get("_meta")), {})
 
+            r3_score, r4_score, total_mcq_score = extract_mcq_scores(raw_rc)
             cleared_rounds = len(clean_rc)
-            score = min(100, cleared_rounds * 20)
 
             meta_info["stopped_by_admin"] = True
-            meta_info["final_score"] = score
+            meta_info["final_score"] = total_mcq_score
+            meta_info["r3_score"] = r3_score
+            meta_info["r4_score"] = r4_score
             meta_info["cleared_rounds"] = cleared_rounds
             meta_info["stopped_at_round"] = p.get("current_round", 1)
             meta_info["stopped_at"] = now
@@ -1940,17 +2049,23 @@ async def admin_force_stop_relay(body: ForceStopRelayRequest, _: bool = Depends(
             except Exception as e_es:
                 print(f"[TECH_RELAY] exam_status force stop note: {e_es}")
 
-            # Upsert into exam_results for global grading, export, and faculty visibility
+            # Upsert into exam_results for official grading (Score = R3 + R4 out of 20)
             try:
                 res_payload = {
                     "student_id": student_id,
                     "exam_name": relay_name,
-                    "score": score,
-                    "total_marks": 100,
+                    "score": total_mcq_score,
+                    "total_marks": 20,
                     "submitted_at": now,
                     "answers": json.dumps({
                         "type": "tech_relay",
                         "stopped_by_admin": True,
+                        "r3_score": r3_score,
+                        "r4_score": r4_score,
+                        "r3_total": 10,
+                        "r4_total": 10,
+                        "total_score": total_mcq_score,
+                        "total_mcq": 20,
                         "cleared_rounds": cleared_rounds,
                         "stopped_at_round": p.get("current_round", 1),
                         "rounds_completed": clean_rc,
@@ -1990,7 +2105,7 @@ async def admin_remove_student(student_id: str, relay_name: str = "Tech Relay", 
 
 @router.get("/admin/leaderboard")
 async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(verify_admin)):
-    """Get leaderboard of completed students."""
+    """Get leaderboard of completed students with separate Round 3 & Round 4 MCQ counts."""
     try:
         db = get_supabase()
 
@@ -2026,7 +2141,8 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
             total_attempts = sum(r.get("attempts", 1) for r in clean_rc)
             stopped_by_admin = meta_info.get("stopped_by_admin", False)
             cleared_rounds = len(clean_rc)
-            score = meta_info.get("final_score", cleared_rounds * 20)
+
+            r3_score, r4_score, total_mcq_score = extract_mcq_scores(rounds_completed)
 
             leaderboard.append({
                 "student_id": p["student_id"],
@@ -2035,7 +2151,10 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
                 "branch": student.get("branch", ""),
                 "current_round": p["current_round"],
                 "rounds_completed": cleared_rounds,
-                "score": score,
+                "score": total_mcq_score,
+                "r3_score": r3_score,
+                "r4_score": r4_score,
+                "total_mcq": 20,
                 "stopped_by_admin": stopped_by_admin,
                 "total_attempts": total_attempts,
                 "is_completed": p["is_completed"],
@@ -2043,7 +2162,7 @@ async def admin_leaderboard(relay_name: str = "Tech Relay", _: bool = Depends(ve
                 "completed_at": p["completed_at"],
             })
 
-        # Sort leaderboard by score descending, then by completed_at ascending
+        # Sort leaderboard by score (R3+R4 MCQs) descending, then by completed_at ascending
         leaderboard.sort(key=lambda x: (
             x.get("score", 0),
             1 if x.get("is_completed") else 0

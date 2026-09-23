@@ -1018,19 +1018,26 @@ export default function TechRelayPage() {
   // ── Completion / Results Screen ───────────────────────────────
   if (isCompleted) {
     const cleanCompleted = roundsCompleted.filter((r: any) => !(typeof r === "object" && r?._meta));
-    const totalAttempts = cleanCompleted.reduce((sum, r) => sum + (r.attempts || 1), 0);
+    const totalAttempts = cleanCompleted.reduce((sum: number, r: any) => sum + (r.attempts || 1), 0);
     const clearedRoundsSet = new Set(cleanCompleted.map((r: any) => r.round));
     const clearedCount = clearedRoundsSet.size;
     const isStoppedByAdmin = Boolean(progress?.stopped_by_admin || clearedCount < 5);
-    const finalScore = progress?.final_score ?? (clearedCount * 20);
 
-    const roundNames = [
-      { num: 1, name: "Identity Clues", max: 20 },
-      { num: 2, name: "Password Verification Gate", max: 20 },
-      { num: 3, name: "HTML Basic Assessment", max: 20 },
-      { num: 4, name: "Tech Knowledge Quiz", max: 20 },
-      { num: 5, name: "Master Key Vault", max: 20 },
-    ];
+    // Score strictly from Round 3 (HTML) & Round 4 (Tech Quiz)
+    let r3Score = progress?.r3_score ?? 0;
+    let r4Score = progress?.r4_score ?? 0;
+
+    for (const r of (cleanCompleted as any[])) {
+      if (r.round === 3) {
+        r3Score = Math.max(r3Score, Number(r.score ?? r.questions_solved ?? 0));
+      }
+      if (r.round === 4) {
+        r4Score = Math.max(r4Score, Number(r.score ?? r.questions_solved ?? 0));
+      }
+    }
+
+    const finalScore = r3Score + r4Score; // strictly out of 20
+    const totalPercentage = Math.round((finalScore / 20) * 100);
 
     return (
       <div className={styles.container}>
@@ -1040,7 +1047,7 @@ export default function TechRelayPage() {
             ← Dashboard
           </button>
         </div>
-        <div className={styles.completionContainer} style={{ maxWidth: 680 }}>
+        <div className={styles.completionContainer} style={{ maxWidth: 700 }}>
           <div className={styles.trophyIcon} style={{ fontSize: isStoppedByAdmin ? 64 : 72 }}>
             {isStoppedByAdmin ? "🛑" : "🏆"}
           </div>
@@ -1056,48 +1063,64 @@ export default function TechRelayPage() {
                 : undefined
             }
           >
-            {isStoppedByAdmin ? "Exam Concluded by Administrator" : "Relay Complete!"}
+            {isStoppedByAdmin ? "Exam Concluded by Administrator" : "Tech Relay Completed!"}
           </h1>
           <p className={styles.completionSubtitle}>
             {isStoppedByAdmin
-              ? "The administrator has officially concluded the exam session. Your performance up to the point of stoppage has been evaluated and recorded as your final result."
-              : "Outstanding! You conquered all 5 challenge rounds of Tech Relay."}
+              ? "The administrator has officially stopped the exam session. Your result has been evaluated based on your Round 3 & Round 4 MCQ performance up to this point."
+              : "Outstanding work! You have finished all rounds of the Tech Relay challenge."}
           </p>
 
-          {/* Key Metrics */}
-          <div className={styles.statsGrid} style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+          {/* Key Metrics: Separate Round 3 & Round 4 + Total */}
+          <div className={styles.statsGrid} style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
             <div
               className={styles.statItem}
               style={{
-                background: "rgba(56, 189, 248, 0.08)",
-                borderColor: "rgba(56, 189, 248, 0.2)",
+                background: "rgba(56, 189, 248, 0.1)",
+                borderColor: "rgba(56, 189, 248, 0.3)",
               }}
             >
               <p className={styles.statValue} style={{ color: "#38bdf8" }}>
-                {finalScore} <span style={{ fontSize: 16, opacity: 0.6 }}>/ 100</span>
+                {finalScore} <span style={{ fontSize: 15, opacity: 0.6 }}>/ 20</span>
               </p>
-              <p className={styles.statLabel}>Final Score</p>
+              <p className={styles.statLabel}>Total MCQs Correct ({totalPercentage}%)</p>
             </div>
-            <div className={styles.statItem}>
-              <p className={styles.statValue} style={{ color: isStoppedByAdmin ? "#fbbf24" : "#34d399" }}>
-                {clearedCount}/5
+
+            <div
+              className={styles.statItem}
+              style={{
+                background: "rgba(168, 85, 247, 0.1)",
+                borderColor: "rgba(168, 85, 247, 0.3)",
+              }}
+            >
+              <p className={styles.statValue} style={{ color: "#c084fc" }}>
+                {r3Score} <span style={{ fontSize: 15, opacity: 0.6 }}>/ 10</span>
               </p>
-              <p className={styles.statLabel}>Rounds Cleared</p>
+              <p className={styles.statLabel}>Round 3 (HTML) Correct</p>
             </div>
-            <div className={styles.statItem}>
-              <p className={styles.statValue}>{totalAttempts}</p>
-              <p className={styles.statLabel}>Total Attempts</p>
+
+            <div
+              className={styles.statItem}
+              style={{
+                background: "rgba(52, 211, 153, 0.1)",
+                borderColor: "rgba(52, 211, 153, 0.3)",
+              }}
+            >
+              <p className={styles.statValue} style={{ color: "#34d399" }}>
+                {r4Score} <span style={{ fontSize: 15, opacity: 0.6 }}>/ 10</span>
+              </p>
+              <p className={styles.statLabel}>Round 4 (Quiz) Correct</p>
             </div>
           </div>
 
-          {/* Round-by-Round Breakdown Card */}
+          {/* Separate MCQ Breakdown Section */}
           <div
             style={{
               background: "rgba(255, 255, 255, 0.03)",
               border: "1px solid rgba(255, 255, 255, 0.08)",
               borderRadius: 16,
               padding: "20px 24px",
-              marginBottom: 28,
+              marginBottom: 20,
               textAlign: "left",
             }}
           >
@@ -1113,71 +1136,149 @@ export default function TechRelayPage() {
                 justifyContent: "space-between",
               }}
             >
-              <span>Round-by-Round Result</span>
-              <span>Points Earned</span>
+              <span>MCQ Assessments Breakdown</span>
+              <span>Correct / Total</span>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {roundNames.map((r) => {
-                const isCleared = clearedRoundsSet.has(r.num);
-                const roundInfo = rounds.find((rnd) => rnd.round_number === r.num);
-                const displayTitle = roundInfo?.round_title || r.name;
-
-                return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Round 3 Card */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  background: r3Score >= 3 ? "rgba(168, 85, 247, 0.1)" : "rgba(255, 255, 255, 0.03)",
+                  border: r3Score >= 3 ? "1px solid rgba(168, 85, 247, 0.35)" : "1px solid rgba(255, 255, 255, 0.07)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div
-                    key={`res-r-${r.num}`}
                     style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 14px",
-                      borderRadius: 10,
-                      background: isCleared
-                        ? "rgba(52, 211, 153, 0.08)"
-                        : "rgba(255, 255, 255, 0.02)",
-                      border: isCleared
-                        ? "1px solid rgba(52, 211, 153, 0.25)"
-                        : "1px solid rgba(255, 255, 255, 0.05)",
+                      justifyContent: "center",
+                      fontSize: 14,
+                      fontWeight: 800,
+                      background: r3Score >= 3 ? "#c084fc" : "rgba(255, 255, 255, 0.1)",
+                      color: r3Score >= 3 ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 12,
-                          fontWeight: 800,
-                          background: isCleared ? "#34d399" : "rgba(255, 255, 255, 0.1)",
-                          color: isCleared ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
-                        }}
-                      >
-                        {isCleared ? "✓" : r.num}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: isCleared ? "#fff" : "rgba(255, 255, 255, 0.5)" }}>
-                          Round {r.num}: {displayTitle}
-                        </div>
-                        <div style={{ fontSize: 11, color: isCleared ? "#34d399" : "rgba(255, 255, 255, 0.3)" }}>
-                          {isCleared ? "Cleared Successfully" : isStoppedByAdmin ? "Incomplete at Stoppage" : "Not Cleared"}
-                        </div>
-                      </div>
+                    R3
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+                      Round 3: HTML Basic Assessment
                     </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: isCleared ? "#34d399" : "rgba(255, 255, 255, 0.3)",
-                      }}
-                    >
-                      {isCleared ? `+${r.max} pts` : "0 pts"}
+                    <div style={{ fontSize: 12, color: r3Score >= 3 ? "#c084fc" : "rgba(255, 255, 255, 0.4)" }}>
+                      {r3Score >= 3 ? "✅ Passed (3+ required)" : isStoppedByAdmin ? "Incomplete at stoppage" : "Needs 3+ correct"}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: r3Score >= 3 ? "#c084fc" : "#fff" }}>
+                    {r3Score} <span style={{ fontSize: 13, opacity: 0.6 }}>/ 10</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.4)" }}>
+                    {r3Score * 10}% Accuracy
+                  </div>
+                </div>
+              </div>
+
+              {/* Round 4 Card */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  background: r4Score >= 4 ? "rgba(52, 211, 153, 0.1)" : "rgba(255, 255, 255, 0.03)",
+                  border: r4Score >= 4 ? "1px solid rgba(52, 211, 153, 0.35)" : "1px solid rgba(255, 255, 255, 0.07)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 14,
+                      fontWeight: 800,
+                      background: r4Score >= 4 ? "#34d399" : "rgba(255, 255, 255, 0.1)",
+                      color: r4Score >= 4 ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
+                    }}
+                  >
+                    R4
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+                      Round 4: Tech Knowledge Quiz
+                    </div>
+                    <div style={{ fontSize: 12, color: r4Score >= 4 ? "#34d399" : "rgba(255, 255, 255, 0.4)" }}>
+                      {r4Score >= 4 ? "✅ Passed (4+ required)" : isStoppedByAdmin ? "Incomplete at stoppage" : "Needs 4+ correct"}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: r4Score >= 4 ? "#34d399" : "#fff" }}>
+                    {r4Score} <span style={{ fontSize: 13, opacity: 0.6 }}>/ 10</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.4)" }}>
+                    {r4Score * 10}% Accuracy
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Note clarifying that score is strictly R3 + R4 */}
+            <div
+              style={{
+                marginTop: 14,
+                padding: "8px 12px",
+                borderRadius: 8,
+                background: "rgba(255, 255, 255, 0.03)",
+                fontSize: 11,
+                color: "rgba(255, 255, 255, 0.45)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>ℹ️</span>
+              <span>
+                Assessment score is determined strictly by Round 3 (HTML) & Round 4 (Tech Quiz) MCQs (Total 20). Rounds 1, 2, and 5 are qualification stages.
+              </span>
+            </div>
+          </div>
+
+          {/* Tournament Stage Completion Progress */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "12px 18px",
+              borderRadius: 12,
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              marginBottom: 24,
+              fontSize: 13,
+              color: "rgba(255, 255, 255, 0.6)",
+            }}
+          >
+            <div>
+              Tournament Progress: <strong style={{ color: "#fff" }}>{clearedCount}/5 Stages Cleared</strong>
+            </div>
+            <div>
+              Total Attempts: <strong style={{ color: "#fff" }}>{totalAttempts}</strong>
             </div>
           </div>
 

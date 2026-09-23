@@ -684,7 +684,7 @@ export default function TechRelayAdminPage() {
   const handleForceStopRelay = async () => {
     if (
       !confirm(
-        "🛑 DANGER: FORCE STOP EXAM\n\nAre you sure you want to forcefully stop Tech Relay for ALL active students?\n\n• The exam will immediately deactivate and conclude.\n• Each student's progress will be frozen at their current stage.\n• Final results will be generated based on rounds cleared up to this point (20 pts per cleared round, max 100).\n• Student screens will instantly transition to their final score result screen."
+        "🛑 DANGER: FORCE STOP EXAM\n\nAre you sure you want to forcefully stop Tech Relay for ALL active students?\n\n• The exam will immediately deactivate and conclude.\n• Each student's progress will be frozen at their current stage.\n• Final results will be calculated strictly from Round 3 (HTML) & Round 4 (Tech Quiz) MCQs solved up to this point (Max 20 MCQs).\n• Student screens will instantly transition to their final score result screen."
       )
     ) {
       return;
@@ -1297,6 +1297,7 @@ export default function TechRelayAdminPage() {
                   <tr>
                     <th>STUDENT</th>
                     <th>CURRENT ROUND</th>
+                    <th>MCQ SCORE (20)</th>
                     <th>SUB-PROGRESS</th>
                     <th>ROUND STATUS</th>
                     <th>STRIKES</th>
@@ -1396,13 +1397,30 @@ export default function TechRelayAdminPage() {
                         </td>
 
                         <td>
+                          {p.has_started ? (
+                            <div>
+                              <div style={{ fontWeight: 800, color: "#38bdf8", fontSize: 13 }}>
+                                {p.score ?? ((p.r3_score ?? 0) + (p.r4_score ?? 0))} / 20
+                              </div>
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 2, display: "flex", gap: 6 }}>
+                                <span style={{ color: "#c084fc" }}>R3: <strong>{p.r3_score ?? 0}/10</strong></span>
+                                <span>•</span>
+                                <span style={{ color: "#f472b6" }}>R4: <strong>{p.r4_score ?? 0}/10</strong></span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>—</span>
+                          )}
+                        </td>
+
+                        <td>
                           <span style={{ fontSize: 12, fontWeight: 600, color: p.stopped_by_admin ? "#fca5a5" : "#cbd5e1" }}>
                             {!p.has_started
                               ? "—"
                               : p.stopped_by_admin
-                              ? `${p.cleared_rounds ?? 0}/5 Cleared (${p.score ?? 0} pts)`
+                              ? `${p.cleared_rounds ?? 0}/5 Cleared`
                               : isCompleted
-                              ? "5/5 Cleared (100 pts)"
+                              ? "5/5 Cleared"
                               : `Q${(p.current_question_index || 0) + 1}`}
                           </span>
                         </td>
@@ -1437,7 +1455,7 @@ export default function TechRelayAdminPage() {
                             }}
                           >
                             {p.stopped_by_admin
-                              ? `🛑 STOPPED (${p.score ?? 0} PTS)`
+                              ? `🛑 STOPPED (${p.score ?? ((p.r3_score ?? 0) + (p.r4_score ?? 0))}/20)`
                               : isCompleted
                               ? "COMPLETED"
                               : p.has_started
@@ -1664,7 +1682,9 @@ export default function TechRelayAdminPage() {
                   <th>Rank</th>
                   <th>Student</th>
                   <th>Branch</th>
-                  <th>Score</th>
+                  <th>MCQ Score (Max 20)</th>
+                  <th>Round 3 (HTML)</th>
+                  <th>Round 4 (Quiz)</th>
                   <th>Current Round</th>
                   <th>Completed Rounds</th>
                   <th>Total Attempts</th>
@@ -1685,7 +1705,13 @@ export default function TechRelayAdminPage() {
                     </td>
                     <td>{entry.branch || "—"}</td>
                     <td style={{ fontWeight: 800, color: "#38bdf8", fontSize: 13 }}>
-                      {entry.score ?? ((entry.rounds_completed || 0) * 20)} / 100
+                      <strong>{entry.score ?? ((entry.r3_score ?? 0) + (entry.r4_score ?? 0))}</strong> / 20
+                    </td>
+                    <td style={{ color: "#c084fc", fontWeight: 700, fontSize: 13 }}>
+                      {entry.r3_score ?? 0} / 10
+                    </td>
+                    <td style={{ color: "#f472b6", fontWeight: 700, fontSize: 13 }}>
+                      {entry.r4_score ?? 0} / 10
                     </td>
                     <td>
                       <span

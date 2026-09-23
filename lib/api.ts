@@ -880,7 +880,10 @@ export interface TechRelayProgress {
   r1_answer?: string;
   r3_solved?: number[];
   stopped_by_admin?: boolean;
+  r3_score?: number;
+  r4_score?: number;
   final_score?: number;
+  total_mcq?: number;
 }
 
 export interface TechRelaySubmitResult {
@@ -973,6 +976,9 @@ export interface TechRelayParticipant {
   completed_at: string | null;
   warnings: number;
   score?: number;
+  r3_score?: number;
+  r4_score?: number;
+  total_mcq?: number;
   stopped_by_admin?: boolean;
   cleared_rounds?: number;
 }
@@ -1060,6 +1066,9 @@ export interface TechRelayLeaderboardEntry {
   started_at: string;
   completed_at: string | null;
   score?: number;
+  r3_score?: number;
+  r4_score?: number;
+  total_mcq?: number;
   stopped_by_admin?: boolean;
 }
 
