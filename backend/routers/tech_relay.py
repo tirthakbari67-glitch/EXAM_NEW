@@ -197,56 +197,67 @@ DEFAULT_ROUND_3_HTML_CONTENT = {
 
 DEFAULT_ROUND_4_TECH_QUIZ_CONTENT = {
     "target_required": 4,
+    "quiz_title": "Introductory Engineering MCQ Assessment",
     "questions": [
         {
-            "question": "What is the return type of type(None) in Python?",
-            "options": ["<class 'NoneType'>", "<class 'null'>", "<class 'void'>", "<class 'undefined'>"],
+            "question": "Who is the co-founder and famous former CEO of Apple?",
+            "options": ["Bill Gates", "Steve Jobs", "Elon Musk", "Mark Zuckerberg"],
+            "correct": 1
+        },
+        {
+            "question": "Which popular social media platform was founded by Mark Zuckerberg and his college roommates in 2004?",
+            "options": ["Twitter", "Instagram", "Facebook", "LinkedIn"],
+            "correct": 2
+        },
+        {
+            "question": "Who is the billionaire entrepreneur behind companies like SpaceX and Tesla?",
+            "options": ["Jeff Bezos", "Elon Musk", "Sundar Pichai", "Satya Nadella"],
+            "correct": 1
+        },
+        {
+            "question": "What does the \"USB\" acronym stand for in computer hardware?",
+            "options": ["Universal Serial Bus", "Useful System Board", "Ultra Speed Byte", "Unified Software Bridge"],
             "correct": 0
         },
         {
-            "question": "Which data structure operates strictly on a LIFO (Last In, First Out) principle?",
-            "options": ["Queue", "Stack", "Array", "Hash Table"],
-            "correct": 1
-        },
-        {
-            "question": "What is the average time complexity of searching an element in a balanced Binary Search Tree?",
-            "options": ["O(1)", "O(n)", "O(log n)", "O(n log n)"],
+            "question": "Which company created the popular Android mobile operating system?",
+            "options": ["Apple", "Microsoft", "Google", "IBM"],
             "correct": 2
         },
         {
-            "question": "Which HTTP status code officially signifies 'Unauthorized' access?",
-            "options": ["403 Forbidden", "401 Unauthorized", "400 Bad Request", "404 Not Found"],
+            "question": "What does \"Wi-Fi\" stand for in wireless networking?",
+            "options": [
+                "Wireless Fidelity",
+                "Wide Field",
+                "Wired Filter",
+                "It doesn't stand for anything (it's just a catchphrase)"
+            ],
+            "correct": 3
+        },
+        {
+            "question": "Who founded the e-commerce giant Amazon in 1994?",
+            "options": ["Jeff Bezos", "Bill Gates", "Steve Jobs", "Larry Page"],
+            "correct": 0
+        },
+        {
+            "question": "What is the main function of a computer's RAM (Random Access Memory)?",
+            "options": [
+                "Permanent storage for photos and videos",
+                "Temporary working memory for active tasks",
+                "Cooling down the processor",
+                "Supplying battery power"
+            ],
             "correct": 1
         },
         {
-            "question": "In SQL, which keyword is used to eliminate duplicate rows from a query result?",
-            "options": ["UNIQUE", "DISTINCT", "DIFFERENT", "FILTER"],
-            "correct": 1
-        },
-        {
-            "question": "Which JavaScript equality operator checks both value and type without coercion?",
-            "options": ["==", "===", "!=", "=:"],
-            "correct": 1
-        },
-        {
-            "question": "Which of the following is NOT a standard valid IP protocol version?",
-            "options": ["IPv4", "IPv6", "IPv5", "All of these are standard"],
+            "question": "Which search engine was created by Larry Page and Sergey Brin while they were students at Stanford University?",
+            "options": ["Yahoo", "Bing", "Google", "Ask Jeeves"],
             "correct": 2
         },
         {
-            "question": "In Git, which command creates a new branch and immediately switches to it?",
-            "options": ["git branch -n <name>", "git checkout -b <name>", "git fetch -new <name>", "git push -b <name>"],
-            "correct": 1
-        },
-        {
-            "question": "Which clause in a Python try...except...finally block ALWAYS executes regardless of exceptions?",
-            "options": ["except", "else", "finally", "pass"],
-            "correct": 2
-        },
-        {
-            "question": "In a relational database table, which key uniquely identifies each record in the table?",
-            "options": ["Foreign Key", "Primary Key", "Candidate Index", "Composite View"],
-            "correct": 1
+            "question": "What does the \"PDF\" file format stand for?",
+            "options": ["Portable Document Format", "Printable Data File", "Program Document Folder", "Public Digital File"],
+            "correct": 0
         }
     ]
 }
@@ -356,7 +367,7 @@ def auto_upgrade_rounds_to_latest(rounds: list, db) -> None:
             r["round_type"] = "mcq"
             r["correct_answer"] = "MCQ_4_OF_10"
             r["time_limit_seconds"] = 0
-            if not isinstance(r.get("content"), dict) or len(r.get("content", {}).get("questions", [])) < 10:
+            if not isinstance(r.get("content"), dict) or len(r.get("content", {}).get("questions", [])) < 10 or "apple" not in json.dumps(r.get("content", {})).lower():
                 r["content"] = DEFAULT_ROUND_4_TECH_QUIZ_CONTENT
 
         # Round 5: Ensure 10-step Crack Final Password format

@@ -495,6 +495,81 @@ function HtmlAssessmentRound({
   );
 }
 
+const DEFAULT_R4_TECH_QUIZ_QUESTIONS = [
+  {
+    question: "Who is the co-founder and famous former CEO of Apple?",
+    options: ["Bill Gates", "Steve Jobs", "Elon Musk", "Mark Zuckerberg"],
+    correct: 1,
+  },
+  {
+    question:
+      "Which popular social media platform was founded by Mark Zuckerberg and his college roommates in 2004?",
+    options: ["Twitter", "Instagram", "Facebook", "LinkedIn"],
+    correct: 2,
+  },
+  {
+    question: "Who is the billionaire entrepreneur behind companies like SpaceX and Tesla?",
+    options: ["Jeff Bezos", "Elon Musk", "Sundar Pichai", "Satya Nadella"],
+    correct: 1,
+  },
+  {
+    question: 'What does the "USB" acronym stand for in computer hardware?',
+    options: [
+      "Universal Serial Bus",
+      "Useful System Board",
+      "Ultra Speed Byte",
+      "Unified Software Bridge",
+    ],
+    correct: 0,
+  },
+  {
+    question: "Which company created the popular Android mobile operating system?",
+    options: ["Apple", "Microsoft", "Google", "IBM"],
+    correct: 2,
+  },
+  {
+    question: 'What does "Wi-Fi" stand for in wireless networking?',
+    options: [
+      "Wireless Fidelity",
+      "Wide Field",
+      "Wired Filter",
+      "It doesn't stand for anything (it's just a catchphrase)",
+    ],
+    correct: 3,
+  },
+  {
+    question: "Who founded the e-commerce giant Amazon in 1994?",
+    options: ["Jeff Bezos", "Bill Gates", "Steve Jobs", "Larry Page"],
+    correct: 0,
+  },
+  {
+    question: "What is the main function of a computer's RAM (Random Access Memory)?",
+    options: [
+      "Permanent storage for photos and videos",
+      "Temporary working memory for active tasks",
+      "Cooling down the processor",
+      "Supplying battery power",
+    ],
+    correct: 1,
+  },
+  {
+    question:
+      "Which search engine was created by Larry Page and Sergey Brin while they were students at Stanford University?",
+    options: ["Yahoo", "Bing", "Google", "Ask Jeeves"],
+    correct: 2,
+  },
+  {
+    question: 'What does the "PDF" file format stand for?',
+    options: [
+      "Portable Document Format",
+      "Printable Data File",
+      "Program Document Folder",
+      "Public Digital File",
+    ],
+    correct: 0,
+  },
+];
+
 function TechQuizRound({
   round,
   mcqAnswers,
@@ -510,60 +585,14 @@ function TechQuizRound({
   }>(round.content);
 
   const rawQuestions = content?.questions || [];
-  const questions = rawQuestions.length >= 10 ? rawQuestions : [
-    {
-      question: "What is the return type of type(None) in Python?",
-      options: ["<class 'NoneType'>", "<class 'null'>", "<class 'void'>", "<class 'undefined'>"],
-      correct: 0,
-    },
-    {
-      question: "Which data structure operates strictly on a LIFO (Last In, First Out) principle?",
-      options: ["Queue", "Stack", "Array", "Hash Table"],
-      correct: 1,
-    },
-    {
-      question: "What is the average time complexity of searching an element in a balanced Binary Search Tree?",
-      options: ["O(1)", "O(n)", "O(log n)", "O(n log n)"],
-      correct: 2,
-    },
-    {
-      question: "Which HTTP status code officially signifies 'Unauthorized' access?",
-      options: ["403 Forbidden", "401 Unauthorized", "400 Bad Request", "404 Not Found"],
-      correct: 1,
-    },
-    {
-      question: "In SQL, which keyword is used to eliminate duplicate rows from a query result?",
-      options: ["UNIQUE", "DISTINCT", "DIFFERENT", "FILTER"],
-      correct: 1,
-    },
-    {
-      question: "Which JavaScript equality operator checks both value and type without coercion?",
-      options: ["==", "===", "!=", "=:"],
-      correct: 1,
-    },
-    {
-      question: "Which of the following is NOT a standard valid IP protocol version?",
-      options: ["IPv4", "IPv6", "IPv5", "All of these are standard"],
-      correct: 2,
-    },
-    {
-      question: "In Git, which command creates a new branch and immediately switches to it?",
-      options: ["git branch -n <name>", "git checkout -b <name>", "git fetch -new <name>", "git push -b <name>"],
-      correct: 1,
-    },
-    {
-      question: "Which clause in a Python try...except...finally block ALWAYS executes regardless of exceptions?",
-      options: ["except", "else", "finally", "pass"],
-      correct: 2,
-    },
-    {
-      question: "In a relational database table, which key uniquely identifies each record in the table?",
-      options: ["Foreign Key", "Primary Key", "Candidate Index", "Composite View"],
-      correct: 1,
-    },
-  ];
+  const questions =
+    rawQuestions.length >= 10 &&
+    rawQuestions.some((q) => q.question && q.question.toLowerCase().includes("apple"))
+      ? rawQuestions
+      : DEFAULT_R4_TECH_QUIZ_QUESTIONS;
 
   const answeredCount = mcqAnswers.filter((a) => a !== -1).length;
+  const optionLetters = ["A", "B", "C", "D"];
 
   function handleSelect(qIndex: number, optionIndex: number) {
     const updated = [...mcqAnswers];
@@ -589,21 +618,28 @@ function TechQuizRound({
       >
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", letterSpacing: "0.5px" }}>
-            ROUND 4: TECHNICAL MCQ CHALLENGE (POOL OF 10 MCQs)
+            ROUND 4: INTRODUCTORY ENGINEERING ASSESSMENT (10 MCQs)
           </div>
-          <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.8)", fontWeight: 600 }}>
+          <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.6)", marginTop: 2 }}>
+            Introductory Engineering MCQ Assessment
+          </div>
+          <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.9)", fontWeight: 600, marginTop: 4 }}>
             Must answer at least <span style={{ color: "#34d399", fontWeight: 800 }}>4 questions correctly</span> to unlock the Final Round
           </div>
         </div>
         <div
           style={{
-            padding: "5px 14px",
+            padding: "6px 16px",
             borderRadius: 20,
-            background: answeredCount === questions.length ? "rgba(52, 211, 153, 0.2)" : "rgba(255, 255, 255, 0.06)",
-            border: answeredCount === questions.length ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(255, 255, 255, 0.1)",
+            background:
+              answeredCount === questions.length ? "rgba(52, 211, 153, 0.2)" : "rgba(56, 189, 248, 0.15)",
+            border:
+              answeredCount === questions.length
+                ? "1px solid rgba(52, 211, 153, 0.5)"
+                : "1px solid rgba(56, 189, 248, 0.4)",
             fontSize: 12,
-            fontWeight: 700,
-            color: answeredCount === questions.length ? "#34d399" : "rgba(255, 255, 255, 0.6)",
+            fontWeight: 800,
+            color: answeredCount === questions.length ? "#34d399" : "#38bdf8",
           }}
         >
           {answeredCount} / {questions.length} Answered
@@ -615,7 +651,7 @@ function TechQuizRound({
         {questions.map((q, qi) => (
           <div key={`mcq-${round.round_number}-${qi}`} className={styles.mcqQuestion}>
             <p className={styles.mcqQuestionText}>
-              <span style={{ color: "#818cf8", fontWeight: 800, marginRight: 6 }}>{qi + 1}.</span>
+              <span style={{ color: "#38bdf8", fontWeight: 800, marginRight: 6 }}>{qi + 1}.</span>
               {q.question}
             </p>
             <div className={styles.mcqOptions}>
@@ -635,6 +671,15 @@ function TechQuizRound({
                     <div className={`${styles.mcqRadio} ${isSelected ? styles.mcqRadioSelected : ""}`}>
                       {isSelected && <div className={styles.mcqRadioDot} />}
                     </div>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.4)",
+                        marginRight: 4,
+                      }}
+                    >
+                      {optionLetters[oi]})
+                    </span>
                     <span>{opt}</span>
                   </div>
                 );
