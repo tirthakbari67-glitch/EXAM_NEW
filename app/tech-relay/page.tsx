@@ -370,6 +370,8 @@ export default function TechRelayPage() {
     try {
       const res = await startTechRelay(startCode.trim());
       if (res.success) {
+        setIsTerminated(false);
+        setWarningCount(0);
         setProgress((prev) => ({
           current_round: res.current_round || 1,
           current_question_index: 0,
@@ -405,6 +407,17 @@ export default function TechRelayPage() {
       ]);
       setRounds(roundsData);
       setProgress(progressData);
+
+      // Check if student has not started or was reset
+      const hasStartedProg = Boolean(
+        progressData?.started_at ||
+        (progressData?.rounds_completed && progressData.rounds_completed.length > 0) ||
+        (progressData?.current_round && progressData.current_round > 1)
+      );
+      if (!hasStartedProg) {
+        setIsTerminated(false);
+        setWarningCount(0);
+      }
 
       // Set active round and sub-question index to current progress
       const currentRound = progressData.current_round || 1;
@@ -681,7 +694,12 @@ export default function TechRelayPage() {
         isSubmitted={isCompleted || isTerminated}
         examName="Tech Relay"
         onAutoSubmit={handleAutoSubmit}
-        onWarningUpdate={(count) => setWarningCount(count)}
+        onWarningUpdate={(count) => {
+          setWarningCount(count);
+          if (count < 3) {
+            setIsTerminated(false);
+          }
+        }}
       />
       <Confetti active={showConfetti} />
 
@@ -800,9 +818,49 @@ export default function TechRelayPage() {
             <p style={{ color: "rgba(255, 255, 255, 0.7)", maxWidth: 500, margin: "0 auto 20px", lineHeight: 1.6 }}>
               The Tech Relay challenge has been automatically terminated due to repeated anti-cheat violations (tab switching, window blur, or prohibited shortcuts).
             </p>
-            <button className={styles.submitBtn} style={{ background: "rgba(255, 255, 255, 0.1)", maxWidth: 260, margin: "0 auto" }} onClick={() => router.push("/dashboard")}>
-              ← Return to Dashboard
-            </button>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", margin: "0 auto", maxWidth: 460 }}>
+              <button
+                className={styles.submitBtn}
+                style={{
+                  background: "linear-gradient(135deg, #06b6d4, #6366f1)",
+                  padding: "12px 24px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  borderRadius: 10,
+                  border: "none",
+                  color: "#fff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  flex: "1 1 200px"
+                }}
+                onClick={() => {
+                  loadData();
+                  window.location.reload();
+                }}
+              >
+                <span>🔄</span> Refresh / Check Status
+              </button>
+              <button
+                className={styles.submitBtn}
+                style={{
+                  background: "rgba(255, 255, 255, 0.1)",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  padding: "12px 20px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  borderRadius: 10,
+                  color: "#fff",
+                  flex: "1 1 180px"
+                }}
+                onClick={() => router.push("/dashboard")}
+              >
+                ← Return to Dashboard
+              </button>
+            </div>
           </div>
         </div>
       ) : !isRoundAccessible || !activeRoundConfig ? (

@@ -986,6 +986,16 @@ export async function forceUnlockTechRelay(
   });
 }
 
+export async function clearTechRelayStrikes(
+  studentId: string,
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string }> {
+  return adminFetch<{ success: boolean; message: string }>("/tech-relay/admin/clear-strikes", {
+    method: "POST",
+    body: JSON.stringify({ student_id: studentId, relay_name: relayName }),
+  });
+}
+
 export async function resetTechRelayStudent(
   studentId: string,
   relayName: string = "Tech Relay"

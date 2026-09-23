@@ -12,6 +12,7 @@ import {
   fetchTechRelayLeaderboard,
   fetchTechRelayAdminStudents,
   forceUnlockTechRelay,
+  clearTechRelayStrikes,
   resetTechRelayStudent,
   resetAllTechRelay,
   removeTechRelayStudent,
@@ -406,6 +407,18 @@ export default function TechRelayAdminPage() {
       await refreshObserver();
     } catch (err: any) {
       alert("Force unlock failed: " + (err?.message || err));
+    }
+  };
+
+  const handleClearStrikes = async (student: TechRelayParticipant) => {
+    if (!confirm(`Clear all security strikes (0/3) and unblock ${student.name} (${student.usn})? This will allow them to continue the challenge.`)) return;
+    try {
+      await clearTechRelayStrikes(student.student_id);
+      await loadData();
+      await refreshObserver();
+      alert(`✅ Strikes cleared and exam unblocked for ${student.name}!`);
+    } catch (err: any) {
+      alert("Failed to clear strikes: " + (err?.message || err));
     }
   };
 
@@ -1172,6 +1185,19 @@ export default function TechRelayAdminPage() {
                               title="Force Unlock Next Round"
                             >
                               ⚡ Unlock
+                            </button>
+
+                            <button
+                              className={`${styles.actionBtn}`}
+                              style={{
+                                background: p.warnings > 0 ? "rgba(239, 68, 68, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                                border: p.warnings > 0 ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid rgba(255, 255, 255, 0.1)",
+                                color: p.warnings > 0 ? "#fca5a5" : "rgba(255, 255, 255, 0.7)",
+                              }}
+                              onClick={() => handleClearStrikes(p)}
+                              title="Clear Security Strikes (0/3) & Unblock Termination"
+                            >
+                              🛡️ Strikes ({p.warnings})
                             </button>
 
                             <button

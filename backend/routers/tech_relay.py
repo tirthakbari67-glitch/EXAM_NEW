@@ -47,6 +47,10 @@ class ResetStudentRequest(BaseModel):
 class ResetRelayRequest(BaseModel):
     relay_name: str = "Tech Relay"
 
+class ClearStrikesRequest(BaseModel):
+    student_id: str
+    relay_name: str = "Tech Relay"
+
 class StartRelayRequest(BaseModel):
     start_code: str
     relay_name: str = "Tech Relay"
@@ -418,12 +422,28 @@ async def start_relay(body: StartRelayRequest, current: dict = Depends(get_curre
         raise HTTPException(status_code=500, detail="Failed to initialize relay progress")
 
     try:
-        db.table("exam_status").upsert({
-            "student_id": student_id,
-            "exam_name": "Tech Relay",
-            "status": "in_progress",
-            "started_at": now,
-        }).execute()
+        es_res = db.table("exam_status") \
+            .select("id") \
+            .eq("student_id", student_id) \
+            .ilike("exam_name", "Tech Relay") \
+            .execute()
+        if es_res.data and len(es_res.data) > 0:
+            for rec in es_res.data:
+                db.table("exam_status").update({
+                    "status": "in_progress",
+                    "warnings": 0,
+                    "started_at": now,
+                    "submitted_at": None,
+                }).eq("id", rec["id"]).execute()
+        else:
+            db.table("exam_status").insert({
+                "student_id": student_id,
+                "exam_name": "Tech Relay",
+                "status": "in_progress",
+                "warnings": 0,
+                "started_at": now,
+                "submitted_at": None,
+            }).execute()
     except Exception as e:
         print(f"[TECH_RELAY] exam_status note: {e}")
 
@@ -905,23 +925,121 @@ async def admin_force_unlock(body: ForceUnlockRequest, _: bool = Depends(verify_
             data["started_at"] = now
             db.table("tech_relay_progress").insert(data).execute()
 
+        # Also clear any security termination and strikes if the student had been locked out
+        try:
+            es_rows = db.table("exam_status") \
+                .select("id") \
+                .eq("student_id", body.student_id) \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+            if es_rows.data and len(es_rows.data) > 0:
+                for rec in es_rows.data:
+                    db.table("exam_status").update({
+                        "status": "in_progress",
+                        "warnings": 0,
+                        "submitted_at": None,
+                    }).eq("id", rec["id"]).execute()
+            else:
+                db.table("exam_status").insert({
+                    "student_id": body.student_id,
+                    "exam_name": body.relay_name,
+                    "status": "in_progress",
+                    "warnings": 0,
+                    "started_at": now,
+                    "submitted_at": None,
+                }).execute()
+        except Exception as e_es:
+            print(f"[TECH_RELAY] exam_status force unlock note: {e_es}")
+
         return {"success": True, "message": f"Unlocked Round {body.next_round} for student"}
     except Exception as e:
         print(f"[TECH_RELAY] admin_force_unlock error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/admin/reset-student")
-async def admin_reset_student(body: ResetStudentRequest, _: bool = Depends(verify_admin)):
-    """Reset all relay progress for a student so they can restart."""
+@router.post("/admin/clear-strikes")
+async def admin_clear_strikes(body: ClearStrikesRequest, _: bool = Depends(verify_admin)):
+    """Clear all strikes/violations and unblock security termination for a student without resetting progress."""
     try:
         db = get_supabase()
+        # Reset warnings to 0 and status back to active/in_progress
+        try:
+            db.table("exam_status") \
+                .update({"status": "in_progress", "warnings": 0, "submitted_at": None}) \
+                .eq("student_id", body.student_id) \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+        except Exception as e_es:
+            print(f"[TECH_RELAY] clear strikes exam_status update note: {e_es}")
+
+        try:
+            db.table("violations") \
+                .delete() \
+                .eq("student_id", body.student_id) \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+        except Exception:
+            try:
+                db.table("violations") \
+                    .delete() \
+                    .eq("student_id", body.student_id) \
+                    .execute()
+            except Exception:
+                pass
+
+        return {"success": True, "message": "Strikes cleared and exam termination unblocked"}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_clear_strikes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/admin/reset-student")
+async def admin_reset_student(body: ResetStudentRequest, _: bool = Depends(verify_admin)):
+    """Reset all relay progress and anti-cheat strikes for a student so they can restart fresh."""
+    try:
+        db = get_supabase()
+        # 1. Delete progress
         db.table("tech_relay_progress") \
             .delete() \
             .eq("student_id", body.student_id) \
             .eq("relay_name", body.relay_name) \
             .execute()
-        return {"success": True, "message": "Student relay progress has been reset"}
+
+        # 2. Reset / delete exam_status so strikes and auto-submit are completely cleared
+        try:
+            db.table("exam_status") \
+                .delete() \
+                .eq("student_id", body.student_id) \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+        except Exception as e_es:
+            print(f"[TECH_RELAY] exam_status delete error: {e_es}")
+            try:
+                db.table("exam_status") \
+                    .update({"warnings": 0, "status": "active", "submitted_at": None}) \
+                    .eq("student_id", body.student_id) \
+                    .ilike("exam_name", body.relay_name) \
+                    .execute()
+            except Exception:
+                pass
+
+        # 3. Clear violation records for this student and relay
+        try:
+            db.table("violations") \
+                .delete() \
+                .eq("student_id", body.student_id) \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+        except Exception:
+            try:
+                db.table("violations") \
+                    .delete() \
+                    .eq("student_id", body.student_id) \
+                    .execute()
+            except Exception:
+                pass
+
+        return {"success": True, "message": "Student relay progress and strikes have been completely reset"}
     except Exception as e:
         print(f"[TECH_RELAY] admin_reset_student error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -929,14 +1047,38 @@ async def admin_reset_student(body: ResetStudentRequest, _: bool = Depends(verif
 
 @router.post("/admin/reset-all")
 async def admin_reset_all_relay(body: ResetRelayRequest, _: bool = Depends(verify_admin)):
-    """Reset all student progress for a relay so the entire tournament can start fresh."""
+    """Reset all student progress and strikes for a relay so the entire tournament can start fresh."""
     try:
         db = get_supabase()
         db.table("tech_relay_progress") \
             .delete() \
             .eq("relay_name", body.relay_name) \
             .execute()
-        return {"success": True, "message": f"All student progress for '{body.relay_name}' has been wiped. Tournament reset successfully."}
+
+        try:
+            db.table("exam_status") \
+                .delete() \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+        except Exception as e_es:
+            print(f"[TECH_RELAY] exam_status delete error on reset-all: {e_es}")
+            try:
+                db.table("exam_status") \
+                    .update({"warnings": 0, "status": "active", "submitted_at": None}) \
+                    .ilike("exam_name", body.relay_name) \
+                    .execute()
+            except Exception:
+                pass
+
+        try:
+            db.table("violations") \
+                .delete() \
+                .ilike("exam_name", body.relay_name) \
+                .execute()
+        except Exception:
+            pass
+
+        return {"success": True, "message": f"All student progress and strikes for '{body.relay_name}' have been wiped. Tournament reset successfully."}
     except Exception as e:
         print(f"[TECH_RELAY] admin_reset_all_relay error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
