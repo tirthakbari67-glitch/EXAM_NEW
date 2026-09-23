@@ -106,36 +106,233 @@ def get_student_assigned_r1_index(student_id: str, relay_name: str, total_questi
     return hash_val % total_questions
 
 
-DEFAULT_ROUND_3_MCQ_CONTENT = {
+DEFAULT_ROUND_2_GATE_CONTENT = {
+    "title": "Password Verification Gate",
+    "instruction": "Verify your clearance by typing your exact Round 1 gadget codename to unlock Round 3.",
+    "rule": "Exact match with Round 1 Gadget Codename"
+}
+
+DEFAULT_ROUND_3_DEBUG_CONTENT = {
+    "target_required": 3,
     "questions": [
         {
-            "question": "What is the output of print(type([])) in Python?",
-            "options": ["<class 'list'>", "<class 'tuple'>", "<class 'dict'>", "<class 'set'>"],
+            "id": "d1",
+            "title": "Off-by-One Loop Error",
+            "language": "python",
+            "code": "def sum_numbers(n):\n    total = 0\n    for i in range(1, n):  # Bug: excludes n\n        total += i\n    return total",
+            "bug_description": "The loop stops at n - 1 instead of including n in the total sum.",
+            "hint": "Change range stop value to include n.",
+            "options": [
+                "for i in range(1, n + 1):",
+                "for i in range(0, n - 1):",
+                "for i in range(n):",
+                "for i in range(1, total):"
+            ],
             "correct": 0,
+            "correct_answer": "range(1, n + 1)"
         },
         {
-            "question": "What is the output of 2 ** 3 ** 2 in Python?",
-            "options": ["64", "512", "256", "36"],
+            "id": "d2",
+            "title": "Array Index Out of Bounds",
+            "language": "javascript",
+            "code": "function getLastElement(arr) {\n    return arr[arr.length]; // Bug: undefined\n}",
+            "bug_description": "Array indexing is zero-based; arr[arr.length] accesses an undefined index.",
+            "hint": "Last index is length minus one.",
+            "options": [
+                "return arr[arr.length + 1];",
+                "return arr[arr.length - 1];",
+                "return arr[-1];",
+                "return arr[0];"
+            ],
             "correct": 1,
+            "correct_answer": "arr[arr.length - 1]"
         },
         {
-            "question": "Which of the following is an immutable data type in Python?",
-            "options": ["List", "Dictionary", "Tuple", "Set"],
-            "correct": 2,
+            "id": "d3",
+            "title": "Mutable Default Argument",
+            "language": "python",
+            "code": "def append_to_list(val, my_list=[]):\n    my_list.append(val)\n    return my_list",
+            "bug_description": "Default list argument is evaluated once at definition, accumulating across calls.",
+            "hint": "Use None as default and initialize inside function.",
+            "options": [
+                "def append_to_list(val, my_list=None):",
+                "def append_to_list(val, my_list=tuple()):",
+                "def append_to_list(val, my_list=dict()):",
+                "def append_to_list(val, my_list=\"\"):"
+            ],
+            "correct": 0,
+            "correct_answer": "None"
         },
         {
-            "question": "What does len(set([1, 2, 2, 3, 3, 3])) return?",
-            "options": ["6", "3", "1", "Error"],
+            "id": "d4",
+            "title": "Type Mismatch Concatenation",
+            "language": "python",
+            "code": "def get_user_badge(name, score):\n    return name + \" - Score: \" + score  # TypeError",
+            "bug_description": "Cannot concatenate str and int objects directly in Python.",
+            "hint": "Convert score to string before concatenation.",
+            "options": [
+                "return name + \" - Score: \" + str(score)",
+                "return name + \" - Score: \" + int(score)",
+                "return name + \" - Score: \" + [score]",
+                "return name + \" - Score: \" + (score)"
+            ],
+            "correct": 0,
+            "correct_answer": "str(score)"
+        },
+        {
+            "id": "d5",
+            "title": "UnboundLocalError in Variable Scope",
+            "language": "python",
+            "code": "counter = 0\ndef increment():\n    counter += 1  # UnboundLocalError\n    return counter",
+            "bug_description": "Modifying global counter inside function without global declaration raises UnboundLocalError.",
+            "hint": "Declare counter as global inside increment.",
+            "options": [
+                "local counter",
+                "global counter",
+                "static counter",
+                "var counter"
+            ],
             "correct": 1,
+            "correct_answer": "global counter"
         },
         {
-            "question": "In Python, which keyword combination is used to handle exceptions?",
-            "options": ["try...catch", "try...except", "do...rescue", "handle...throw"],
-            "correct": 1,
+            "id": "d6",
+            "title": "Missing Return Statement",
+            "language": "javascript",
+            "code": "function calculateDiscount(price, percentage) {\n    const discount = price * (percentage / 100);\n    const finalPrice = price - discount;\n}",
+            "bug_description": "Function calculates finalPrice but returns undefined because return statement is missing.",
+            "hint": "Return finalPrice at the end of the function.",
+            "options": [
+                "return finalPrice;",
+                "output finalPrice;",
+                "export finalPrice;",
+                "yield finalPrice;"
+            ],
+            "correct": 0,
+            "correct_answer": "return finalPrice"
         },
+        {
+            "id": "d7",
+            "title": "Dictionary KeyError Crash",
+            "language": "python",
+            "code": "def get_user_role(profile):\n    return profile[\"role\"]  # Crashes if missing",
+            "bug_description": "Direct bracket access raises KeyError if \"role\" key is absent.",
+            "hint": "Use safe dictionary access with default fallback.",
+            "options": [
+                "return profile.get(\"role\", \"guest\")",
+                "return profile[\"role\"] or None",
+                "return profile.find(\"role\")",
+                "return profile.index(\"role\")"
+            ],
+            "correct": 0,
+            "correct_answer": "profile.get(\"role\", \"guest\")"
+        },
+        {
+            "id": "d8",
+            "title": "Strict Equality Type Coercion",
+            "language": "javascript",
+            "code": "function isZero(val) {\n    return val === 0;  // Fails if val is \"0\"\n}",
+            "bug_description": "Strict equality operator does not coerce string \"0\" to number 0.",
+            "hint": "Cast val to Number before comparison.",
+            "options": [
+                "return Number(val) === 0;",
+                "return val == \"0\" && val === 0;",
+                "return typeof val === 0;",
+                "return String(val) === 0;"
+            ],
+            "correct": 0,
+            "correct_answer": "Number(val) === 0"
+        },
+        {
+            "id": "d9",
+            "title": "Tuple Immutability TypeError",
+            "language": "python",
+            "code": "coords = (12.5, 77.2)\ncoords[0] = 13.0  # TypeError: tuple does not support item assignment",
+            "bug_description": "Tuples are immutable in Python; elements cannot be reassigned in-place.",
+            "hint": "Create a new tuple or use a list for mutable coordinates.",
+            "options": [
+                "coords = (13.0, coords[1])",
+                "coords.append(13.0)",
+                "coords.update(0, 13.0)",
+                "set(coords)[0] = 13.0"
+            ],
+            "correct": 0,
+            "correct_answer": "coords = (13.0, coords[1])"
+        },
+        {
+            "id": "d10",
+            "title": "Division by Zero Exception",
+            "language": "python",
+            "code": "def compute_ratio(a, b):\n    return a / b  # Crashes if b is 0",
+            "bug_description": "ZeroDivisionError raised when b equals zero.",
+            "hint": "Check if denominator b is not zero before dividing.",
+            "options": [
+                "return a / b if b != 0 else 0",
+                "return a // 0",
+                "return b / a",
+                "return a % b"
+            ],
+            "correct": 0,
+            "correct_answer": "return a / b if b != 0 else 0"
+        }
     ]
 }
 
+DEFAULT_ROUND_4_TECH_QUIZ_CONTENT = {
+    "target_required": 4,
+    "questions": [
+        {
+            "question": "What is the return type of type(None) in Python?",
+            "options": ["<class 'NoneType'>", "<class 'null'>", "<class 'void'>", "<class 'undefined'>"],
+            "correct": 0
+        },
+        {
+            "question": "Which data structure operates strictly on a LIFO (Last In, First Out) principle?",
+            "options": ["Queue", "Stack", "Array", "Hash Table"],
+            "correct": 1
+        },
+        {
+            "question": "What is the average time complexity of searching an element in a balanced Binary Search Tree?",
+            "options": ["O(1)", "O(n)", "O(log n)", "O(n log n)"],
+            "correct": 2
+        },
+        {
+            "question": "Which HTTP status code officially signifies 'Unauthorized' access?",
+            "options": ["403 Forbidden", "401 Unauthorized", "400 Bad Request", "404 Not Found"],
+            "correct": 1
+        },
+        {
+            "question": "In SQL, which keyword is used to eliminate duplicate rows from a query result?",
+            "options": ["UNIQUE", "DISTINCT", "DIFFERENT", "FILTER"],
+            "correct": 1
+        },
+        {
+            "question": "Which JavaScript equality operator checks both value and type without coercion?",
+            "options": ["==", "===", "!=", "=:"],
+            "correct": 1
+        },
+        {
+            "question": "Which of the following is NOT a standard valid IP protocol version?",
+            "options": ["IPv4", "IPv6", "IPv5", "All of these are standard"],
+            "correct": 2
+        },
+        {
+            "question": "In Git, which command creates a new branch and immediately switches to it?",
+            "options": ["git branch -n <name>", "git checkout -b <name>", "git fetch -new <name>", "git push -b <name>"],
+            "correct": 1
+        },
+        {
+            "question": "Which clause in a Python try...except...finally block ALWAYS executes regardless of exceptions?",
+            "options": ["except", "else", "finally", "pass"],
+            "correct": 2
+        },
+        {
+            "question": "In a relational database table, which key uniquely identifies each record in the table?",
+            "options": ["Foreign Key", "Primary Key", "Candidate Index", "Composite View"],
+            "correct": 1
+        }
+    ]
+}
 
 DEFAULT_ROUND_5_WORKFLOW_CONTENT = {
     "workflow_type": "10_step_master_password",
@@ -161,45 +358,98 @@ DEFAULT_ROUND_5_WORKFLOW_CONTENT = {
 
 
 def auto_upgrade_rounds_to_latest(rounds: list, db) -> None:
-    """Auto-upgrades Round 3 to MCQ and Round 5 to 10-step Crack Final Password workflow."""
+    """Auto-upgrades rounds 2, 3, 4, 5 to latest specifications:
+    - Round 2: Password Verification Gate (validates strictly against Round 1 answer)
+    - Round 3: Find a Code Error (10-question debugging pool, >= 3 correct needed)
+    - Round 4: Tech Quiz (10-question MCQ pool, >= 4 correct needed)
+    - Round 5: Crack Final Password (10-step master key assembly)
+    """
     for r in rounds:
-        # Round 3: Ensure MCQ format
-        if r.get("round_number") == 3 and (r.get("round_type") != "mcq" or "code error" in str(r.get("round_title", "")).lower()):
+        r_num = r.get("round_number")
+
+        # Round 2: Password Verification Gate
+        if r_num == 2 and ("verification" not in str(r.get("round_title", "")).lower() or r.get("round_type") != "puzzle"):
             try:
                 db.table("tech_relay_config").update({
-                    "round_type": "mcq",
-                    "round_title": "Code & Logic Quiz",
-                    "correct_answer": "mcq_all",
+                    "round_title": "Password Verification Gate",
+                    "round_type": "puzzle",
+                    "correct_answer": "VERIFY_ROUND1_PASSWORD",
                     "time_limit_seconds": 0,
-                    "content": json.dumps(DEFAULT_ROUND_3_MCQ_CONTENT),
-                }).eq("round_number", 3).execute()
+                    "content": json.dumps(DEFAULT_ROUND_2_GATE_CONTENT),
+                }).eq("round_number", 2).execute()
+            except Exception as e:
+                print(f"[TECH_RELAY] auto_upgrade Round 2 note: {e}")
+            r["round_title"] = "Password Verification Gate"
+            r["round_type"] = "puzzle"
+            r["correct_answer"] = "VERIFY_ROUND1_PASSWORD"
+            r["time_limit_seconds"] = 0
+            r["content"] = DEFAULT_ROUND_2_GATE_CONTENT
+        elif r_num == 2:
+            r["round_title"] = "Password Verification Gate"
+            r["round_type"] = "puzzle"
+            r["correct_answer"] = "VERIFY_ROUND1_PASSWORD"
+            r["time_limit_seconds"] = 0
+            if not isinstance(r.get("content"), dict) or "rule" not in r.get("content", {}):
+                r["content"] = DEFAULT_ROUND_2_GATE_CONTENT
 
-                r["round_type"] = "mcq"
-                r["round_title"] = "Code & Logic Quiz"
-                r["correct_answer"] = "mcq_all"
-                r["time_limit_seconds"] = 0
-                r["content"] = DEFAULT_ROUND_3_MCQ_CONTENT
+        # Round 3: Find a Code Error (10-question debug pool, target 3)
+        if r_num == 3 and (r.get("round_type") != "debug" or "find" not in str(r.get("round_title", "")).lower()):
+            try:
+                db.table("tech_relay_config").update({
+                    "round_title": "Find a Code Error",
+                    "round_type": "debug",
+                    "correct_answer": "DEBUG_3_OF_10",
+                    "time_limit_seconds": 0,
+                    "content": json.dumps(DEFAULT_ROUND_3_DEBUG_CONTENT),
+                }).eq("round_number", 3).execute()
             except Exception as e:
                 print(f"[TECH_RELAY] auto_upgrade Round 3 note: {e}")
+            r["round_title"] = "Find a Code Error"
+            r["round_type"] = "debug"
+            r["correct_answer"] = "DEBUG_3_OF_10"
+            r["time_limit_seconds"] = 0
+            r["content"] = DEFAULT_ROUND_3_DEBUG_CONTENT
+        elif r_num == 3:
+            r["round_title"] = "Find a Code Error"
+            r["round_type"] = "debug"
+            r["correct_answer"] = "DEBUG_3_OF_10"
+            r["time_limit_seconds"] = 0
+            if not isinstance(r.get("content"), dict) or len(r.get("content", {}).get("questions", [])) < 10:
+                r["content"] = DEFAULT_ROUND_3_DEBUG_CONTENT
 
-        # Round 5: Ensure 10-step Crack Final Password format
-        if r.get("round_number") == 5 and ("decode" in str(r.get("round_title", "")).lower() or "cipher" in str(r.get("content", "")).lower() or (r.get("time_limit_seconds") or 0) > 0):
+        # Round 4: Tech Quiz (10-question MCQ pool, target 4)
+        if r_num == 4 and (r.get("round_type") != "mcq" or "quiz" not in str(r.get("round_title", "")).lower()):
             try:
                 db.table("tech_relay_config").update({
-                    "round_type": "password",
-                    "round_title": "Crack Final Password",
-                    "correct_answer": "CRACK_PASSWORD_10_STEP",
+                    "round_title": "Tech Quiz",
+                    "round_type": "mcq",
+                    "correct_answer": "MCQ_4_OF_10",
                     "time_limit_seconds": 0,
-                    "content": json.dumps(DEFAULT_ROUND_5_WORKFLOW_CONTENT),
-                }).eq("round_number", 5).execute()
-
-                r["round_type"] = "password"
-                r["round_title"] = "Crack Final Password"
-                r["correct_answer"] = "CRACK_PASSWORD_10_STEP"
-                r["time_limit_seconds"] = 0
-                r["content"] = DEFAULT_ROUND_5_WORKFLOW_CONTENT
+                    "content": json.dumps(DEFAULT_ROUND_4_TECH_QUIZ_CONTENT),
+                }).eq("round_number", 4).execute()
             except Exception as e:
-                print(f"[TECH_RELAY] auto_upgrade Round 5 note: {e}")
+                print(f"[TECH_RELAY] auto_upgrade Round 4 note: {e}")
+            r["round_title"] = "Tech Quiz"
+            r["round_type"] = "mcq"
+            r["correct_answer"] = "MCQ_4_OF_10"
+            r["time_limit_seconds"] = 0
+            r["content"] = DEFAULT_ROUND_4_TECH_QUIZ_CONTENT
+        elif r_num == 4:
+            r["round_title"] = "Tech Quiz"
+            r["round_type"] = "mcq"
+            r["correct_answer"] = "MCQ_4_OF_10"
+            r["time_limit_seconds"] = 0
+            if not isinstance(r.get("content"), dict) or len(r.get("content", {}).get("questions", [])) < 10:
+                r["content"] = DEFAULT_ROUND_4_TECH_QUIZ_CONTENT
+
+        # Round 5: Ensure 10-step Crack Final Password format
+        if r_num == 5:
+            r["round_title"] = "Crack Final Password"
+            r["round_type"] = "password"
+            r["correct_answer"] = "CRACK_PASSWORD_10_STEP"
+            r["time_limit_seconds"] = 0
+            if not isinstance(r.get("content"), dict) or "workflow_type" not in r.get("content", {}):
+                r["content"] = DEFAULT_ROUND_5_WORKFLOW_CONTENT
 
 
 @router.get("/config")
@@ -287,11 +537,23 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
 
             current_question_index = 0
             clean_completed = []
+            r1_answer = None
+            r3_solved = []
+
             for item in rounds_completed:
-                if isinstance(item, dict) and item.get("_meta"):
-                    current_question_index = item.get("current_question_index", 0)
-                else:
-                    clean_completed.append(item)
+                if isinstance(item, dict):
+                    if item.get("_meta"):
+                        current_question_index = item.get("current_question_index", 0)
+                        if item.get("r1_answer"):
+                            r1_answer = item["r1_answer"]
+                        if item.get("r3_solved"):
+                            r3_solved = item["r3_solved"]
+                    else:
+                        clean_completed.append(item)
+                        if item.get("round") == 1 and item.get("user_answer"):
+                            r1_answer = item["user_answer"]
+                        if item.get("round") == 3 and item.get("solved_indices"):
+                            r3_solved = item["solved_indices"]
 
             return {
                 "id": row.get("id"),
@@ -303,6 +565,8 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                 "is_completed": row.get("is_completed", False),
                 "started_at": row.get("started_at"),
                 "completed_at": row.get("completed_at"),
+                "r1_answer": r1_answer,
+                "r3_solved": r3_solved,
             }
 
         return {
@@ -311,7 +575,9 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "rounds_completed": [],
             "is_completed": False,
             "started_at": None,
-            "completed_at": None
+            "completed_at": None,
+            "r1_answer": None,
+            "r3_solved": [],
         }
     except Exception as e:
         print(f"[TECH_RELAY] Progress fetch note: {e}")
@@ -321,7 +587,9 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             "rounds_completed": [],
             "is_completed": False,
             "started_at": None,
-            "completed_at": None
+            "completed_at": None,
+            "r1_answer": None,
+            "r3_solved": [],
         }
 
 
@@ -508,93 +776,229 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
     questions = content.get("questions") if isinstance(content, dict) else None
     has_multi_questions = isinstance(questions, list) and len(questions) > 0
 
-    is_correct = False
-
-    if round_type == "mcq":
-        # MCQ format: student submits JSON array of answers for all questions in this round
-        quiz_questions = questions if has_multi_questions else (content.get("questions", []) if isinstance(content, dict) else [])
+    # Parse existing rounds_completed & meta_info
+    rounds_completed = progress.get("rounds_completed", []) if progress else []
+    if isinstance(rounds_completed, str):
         try:
-            submitted = json.loads(answer) if isinstance(answer, str) and "{" in answer else {"answers": [answer]}
-            submitted_answers = submitted.get("answers", [])
-            if len(submitted_answers) == len(quiz_questions) and len(quiz_questions) > 0:
-                is_correct = all(
-                    int(submitted_answers[i]) == int(quiz_questions[i].get("correct", 0))
-                    for i in range(len(quiz_questions))
-                )
-            else:
-                is_correct = False
-        except Exception as e:
-            print(f"[TECH_RELAY] MCQ validation note: {e}")
-            is_correct = False
+            rounds_completed = json.loads(rounds_completed)
+        except Exception:
+            rounds_completed = []
+
+    meta_info = next((r for r in rounds_completed if isinstance(r, dict) and r.get("_meta")), {})
+    rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
+    now = datetime.now(timezone.utc).isoformat()
+
+    # ══════════════════════════════════════════════════════════════
+    # ROUND 1: Identity Gadgets
+    # ══════════════════════════════════════════════════════════════
+    if round_num == 1:
+        assigned_idx = get_student_assigned_r1_index(
+            student_id=student_id,
+            relay_name=relay_name,
+            total_questions=len(questions) if has_multi_questions else 1,
+            db=db
+        )
+        target_q = questions[assigned_idx] if (has_multi_questions and assigned_idx < len(questions)) else (questions[0] if has_multi_questions else {})
+        expected = target_q.get("correct_answer") or target_q.get("answer") or target_q.get("gadget_name") or round_config.get("correct_answer") or ""
+
+        if str(answer).strip().upper() != str(expected).strip().upper():
+            return {"success": False, "message": "Incorrect gadget name! Check the character clues carefully and try again."}
+
+        clean_ans = answer.strip().upper()
+        meta_info["r1_answer"] = clean_ans
+        meta_info["current_question_index"] = 0
+
+        existing_entry = next((r for r in rounds_completed if r.get("round") == 1), None)
+        attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+
+        rounds_completed = [r for r in rounds_completed if r.get("round") != 1]
+        rounds_completed.append({
+            "round": 1,
+            "completed_at": now,
+            "attempts": attempts,
+            "questions_solved": 1,
+            "user_answer": clean_ans
+        })
+        rounds_completed.append(meta_info)
+
+        progress_data = {
+            "student_id": student_id,
+            "relay_name": relay_name,
+            "current_round": 2,
+            "rounds_completed": json.dumps(rounds_completed),
+            "is_completed": False
+        }
+        if progress:
+            db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+        else:
+            progress_data["started_at"] = now
+            db.table("tech_relay_progress").insert(progress_data).execute()
+
+        return {
+            "success": True,
+            "round_cleared": True,
+            "message": f"🎉 Gadget '{clean_ans}' Solved! Round 2 (Password Verification Gate) Unlocked.",
+            "next_round": 2,
+            "next_question_index": 0,
+            "r1_answer": clean_ans,
+            "is_completed": False
+        }
+
+    # ══════════════════════════════════════════════════════════════
+    # ROUND 2: Password Verification Gate
+    # Strict predefined rule based on Round 1 answer
+    # ══════════════════════════════════════════════════════════════
+    elif round_num == 2:
+        r1_ans = meta_info.get("r1_answer")
+        if not r1_ans:
+            for item in rounds_completed:
+                if isinstance(item, dict) and item.get("round") == 1 and item.get("user_answer"):
+                    r1_ans = item.get("user_answer")
+                    break
+
+        if not r1_ans:
+            try:
+                r1_cfg = db.table("tech_relay_config").select("content, correct_answer").eq("round_number", 1).limit(1).execute()
+                if r1_cfg.data:
+                    c1 = r1_cfg.data[0].get("content")
+                    if isinstance(c1, str):
+                        c1 = json.loads(c1)
+                    if isinstance(c1, dict) and "questions" in c1 and len(c1["questions"]) > 0:
+                        assigned_idx = get_student_assigned_r1_index(student_id, relay_name, len(c1["questions"]), db)
+                        r1_ans = c1["questions"][assigned_idx].get("correct_answer") or c1["questions"][assigned_idx].get("gadget_name")
+                    if not r1_ans:
+                        r1_ans = r1_cfg.data[0].get("correct_answer")
+            except Exception:
+                pass
+
+        if not r1_ans:
+            r1_ans = "CAMERA"
+
+        # Strictly validate typed password against Round 1 answer (case-insensitive)
+        if str(answer).strip().upper() != str(r1_ans).strip().upper():
+            return {
+                "success": False,
+                "message": f"Access Denied: Typed password does not match your Round 1 Gadget Codename! Enter '{r1_ans}' exactly."
+            }
+
+        existing_entry = next((r for r in rounds_completed if r.get("round") == 2), None)
+        attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+
+        rounds_completed = [r for r in rounds_completed if r.get("round") != 2]
+        rounds_completed.append({
+            "round": 2,
+            "completed_at": now,
+            "attempts": attempts,
+            "questions_solved": 1,
+            "user_answer": str(answer).strip().upper()
+        })
+        meta_info["current_question_index"] = 0
+        rounds_completed.append(meta_info)
+
+        progress_data = {
+            "student_id": student_id,
+            "relay_name": relay_name,
+            "current_round": 3,
+            "rounds_completed": json.dumps(rounds_completed),
+            "is_completed": False
+        }
+        if progress:
+            db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+        else:
+            progress_data["started_at"] = now
+            db.table("tech_relay_progress").insert(progress_data).execute()
+
+        return {
+            "success": True,
+            "round_cleared": True,
+            "message": "🔒 Access Granted! Password verified against Round 1 Gadget. Round 3 (Find a Code Error) Unlocked!",
+            "next_round": 3,
+            "next_question_index": 0,
+            "is_completed": False
+        }
+
+    # ══════════════════════════════════════════════════════════════
+    # ROUND 3: Find a Code Error (10 debugging questions, >= 3 correct needed)
+    # ══════════════════════════════════════════════════════════════
+    elif round_num == 3:
+        debug_questions = DEFAULT_ROUND_3_DEBUG_CONTENT["questions"]
+        if has_multi_questions and len(questions) >= 10:
+            debug_questions = questions
+
+        if q_idx >= len(debug_questions):
+            q_idx = 0
+
+        target_q = debug_questions[q_idx]
+        corr_opt = str(target_q.get("correct", 0))
+        corr_ans = str(target_q.get("correct_answer", "")).strip().lower()
+        options = target_q.get("options", [])
+
+        user_str = str(answer).strip().lower()
+        is_correct = (
+            user_str == corr_opt or
+            (corr_ans and corr_ans in user_str) or
+            (corr_opt.isdigit() and len(options) > int(corr_opt) and user_str == options[int(corr_opt)].strip().lower())
+        )
 
         if not is_correct:
-            return {"success": False, "message": "Incorrect answer. Check your options and try again!"}
+            return {
+                "success": False,
+                "message": f"Incorrect fix for Question {q_idx + 1}. Check the bug description & hint, then try again!"
+            }
 
-    elif round_type == "password":
-        # Round 5: Crack Final Password
-        # Accepts either the configured answer, or the 10-step assembled master password key
-        expected = ""
-        if has_multi_questions and questions and len(questions) > 0:
-            target_q = questions[min(q_idx, len(questions) - 1)]
-            expected = target_q.get("correct_answer") or target_q.get("answer") or ""
-        else:
-            expected = (round_config.get("correct_answer") or "").strip()
+        # Track solved questions
+        r3_solved = set(meta_info.get("r3_solved", []))
+        r3_solved.add(q_idx)
+        solved_list = sorted(list(r3_solved))
+        meta_info["r3_solved"] = solved_list
+        solved_count = len(solved_list)
 
-        if expected and str(answer).strip().lower() == str(expected).strip().lower():
-            is_correct = True
-        elif len(str(answer).strip()) >= 5:
-            # Valid uppercase master password assembled via 10-step workflow
-            is_correct = True
-        else:
-            is_correct = False
+        if solved_count >= 3:
+            # Round 3 Cleared!
+            existing_entry = next((r for r in rounds_completed if r.get("round") == 3), None)
+            attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
 
-        if not is_correct:
-            return {"success": False, "message": "Invalid master password. Complete the 10-step sequence to unlock the vault!"}
-
-    elif has_multi_questions:
-        # For Round 1, retrieve the student's assigned question index from the pool
-        if round_num == 1 and len(questions) > 1:
-            assigned_idx = get_student_assigned_r1_index(
-                student_id=student_id,
-                relay_name=relay_name,
-                total_questions=len(questions),
-                db=db
-            )
-            target_q = questions[assigned_idx]
-        else:
-            if q_idx >= len(questions):
-                raise HTTPException(status_code=400, detail="Invalid question index for this round")
-            target_q = questions[q_idx]
-
-        expected = target_q.get("correct_answer") or target_q.get("answer") or target_q.get("correct") or ""
-        is_correct = str(answer).strip().lower() == str(expected).strip().lower()
-
-        if not is_correct:
-            return {"success": False, "message": "Incorrect answer. Try again!"}
-
-        # If correct, check if more questions remain in this round
-        # Special rule for Round 1: Solving the assigned single question clears Round 1 immediately!
-        if round_num == 1:
-            pass  # Advance directly to clearing Round 1 below
-        elif q_idx + 1 < len(questions):
-            next_q_idx = q_idx + 1
-            now = datetime.now(timezone.utc).isoformat()
-            rounds_completed = progress.get("rounds_completed", []) if progress else []
-            if isinstance(rounds_completed, str):
-                try:
-                    rounds_completed = json.loads(rounds_completed)
-                except Exception:
-                    rounds_completed = []
-
-            meta_info = next((r for r in rounds_completed if isinstance(r, dict) and r.get("_meta")), {})
-            rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
-            meta_info["current_question_index"] = next_q_idx
+            rounds_completed = [r for r in rounds_completed if r.get("round") != 3]
+            rounds_completed.append({
+                "round": 3,
+                "completed_at": now,
+                "attempts": attempts,
+                "questions_solved": solved_count,
+                "solved_indices": solved_list
+            })
+            meta_info["current_question_index"] = 0
             rounds_completed.append(meta_info)
 
             progress_data = {
                 "student_id": student_id,
                 "relay_name": relay_name,
-                "current_round": round_num,
+                "current_round": 4,
+                "rounds_completed": json.dumps(rounds_completed),
+                "is_completed": False
+            }
+            if progress:
+                db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+            else:
+                progress_data["started_at"] = now
+                db.table("tech_relay_progress").insert(progress_data).execute()
+
+            return {
+                "success": True,
+                "round_cleared": True,
+                "message": f"🎯 Superb! You resolved {solved_count}/3 code errors! Round 4 (Tech Quiz) Unlocked.",
+                "next_round": 4,
+                "next_question_index": 0,
+                "r3_solved": solved_list,
+                "solved_count": solved_count,
+                "is_completed": False
+            }
+        else:
+            # Solved one more, but need 3
+            rounds_completed.append(meta_info)
+            progress_data = {
+                "student_id": student_id,
+                "relay_name": relay_name,
+                "current_round": 3,
                 "rounds_completed": json.dumps(rounds_completed),
                 "is_completed": False
             }
@@ -607,77 +1011,134 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             return {
                 "success": True,
                 "round_cleared": False,
-                "next_question_index": next_q_idx,
-                "total_questions": len(questions),
-                "message": f"🎉 Question {q_idx + 1} Solved! Question {next_q_idx + 1} Unlocked."
+                "message": f"✅ Question {q_idx + 1} Error Resolved! ({solved_count}/3 required).",
+                "next_question_index": (q_idx + 1) % len(debug_questions),
+                "r3_solved": solved_list,
+                "solved_count": solved_count,
+                "is_completed": False
             }
 
-    else:
-        # Legacy single question format
-        correct = (round_config.get("correct_answer") or "").strip().lower()
-        is_correct = answer.lower() == correct
+    # ══════════════════════════════════════════════════════════════
+    # ROUND 4: Tech Quiz (10 MCQs, >= 4 correct needed)
+    # ══════════════════════════════════════════════════════════════
+    elif round_num == 4:
+        quiz_questions = DEFAULT_ROUND_4_TECH_QUIZ_CONTENT["questions"]
+        if has_multi_questions and len(questions) >= 10:
+            quiz_questions = questions
+
+        try:
+            submitted = json.loads(answer) if isinstance(answer, str) and "{" in answer else {"answers": [answer]}
+            submitted_answers = submitted.get("answers", [])
+        except Exception:
+            submitted_answers = []
+
+        if len(submitted_answers) < len(quiz_questions):
+            return {
+                "success": False,
+                "message": f"Please answer all {len(quiz_questions)} questions before submitting."
+            }
+
+        correct_count = 0
+        for i, q in enumerate(quiz_questions):
+            if i < len(submitted_answers) and int(submitted_answers[i]) == int(q.get("correct", 0)):
+                correct_count += 1
+
+        if correct_count < 4:
+            return {
+                "success": False,
+                "message": f"You scored {correct_count}/10. Minimum 4 correct answers required to unlock Round 5. Check your answers and try again!"
+            }
+
+        existing_entry = next((r for r in rounds_completed if r.get("round") == 4), None)
+        attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+
+        rounds_completed = [r for r in rounds_completed if r.get("round") != 4]
+        rounds_completed.append({
+            "round": 4,
+            "completed_at": now,
+            "attempts": attempts,
+            "questions_solved": correct_count,
+            "score": correct_count,
+            "total": len(quiz_questions)
+        })
+        meta_info["current_question_index"] = 0
+        rounds_completed.append(meta_info)
+
+        progress_data = {
+            "student_id": student_id,
+            "relay_name": relay_name,
+            "current_round": 5,
+            "rounds_completed": json.dumps(rounds_completed),
+            "is_completed": False
+        }
+        if progress:
+            db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+        else:
+            progress_data["started_at"] = now
+            db.table("tech_relay_progress").insert(progress_data).execute()
+
+        return {
+            "success": True,
+            "round_cleared": True,
+            "message": f"🎉 Excellent! Score: {correct_count}/10 (4+ required). Final Round (Crack Password) Unlocked!",
+            "next_round": 5,
+            "next_question_index": 0,
+            "score": correct_count,
+            "total": len(quiz_questions),
+            "is_completed": False
+        }
+
+    # ══════════════════════════════════════════════════════════════
+    # ROUND 5: Crack Final Password (10-step master key assembly)
+    # ══════════════════════════════════════════════════════════════
+    elif round_num == 5:
+        if len(str(answer).strip()) >= 5:
+            is_correct = True
+        else:
+            expected = (round_config.get("correct_answer") or "").strip()
+            is_correct = bool(expected and str(answer).strip().lower() == str(expected).strip().lower())
 
         if not is_correct:
-            return {"success": False, "message": "Incorrect answer. Try again!"}
+            return {"success": False, "message": "Invalid master password. Complete the 10-step sequence to unlock the vault!"}
 
-    # 4. Round successfully cleared! Update progress & advance round
-    now = datetime.now(timezone.utc).isoformat()
-    rounds_completed = progress.get("rounds_completed", []) if progress else []
-    if isinstance(rounds_completed, str):
-        try:
-            rounds_completed = json.loads(rounds_completed)
-        except Exception:
-            rounds_completed = []
+        existing_entry = next((r for r in rounds_completed if r.get("round") == 5), None)
+        attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
 
-    meta_info = next((r for r in rounds_completed if isinstance(r, dict) and r.get("_meta")), {})
-    rounds_completed = [r for r in rounds_completed if not (isinstance(r, dict) and r.get("_meta"))]
+        rounds_completed = [r for r in rounds_completed if r.get("round") != 5]
+        rounds_completed.append({
+            "round": 5,
+            "completed_at": now,
+            "attempts": attempts,
+            "questions_solved": 1
+        })
+        meta_info["current_question_index"] = 0
+        rounds_completed.append(meta_info)
 
-    existing_entry = next((r for r in rounds_completed if r.get("round") == round_num), None)
-    attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+        progress_data = {
+            "student_id": student_id,
+            "relay_name": relay_name,
+            "current_round": 6,
+            "rounds_completed": json.dumps(rounds_completed),
+            "is_completed": True,
+            "completed_at": now
+        }
+        if progress:
+            db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+        else:
+            progress_data["started_at"] = now
+            db.table("tech_relay_progress").insert(progress_data).execute()
 
-    rounds_completed = [r for r in rounds_completed if r.get("round") != round_num]
-    rounds_completed.append({
-        "round": round_num,
-        "completed_at": now,
-        "attempts": attempts,
-        "questions_solved": 1 if round_num == 1 else (len(questions) if has_multi_questions else 1)
-    })
+        return {
+            "success": True,
+            "round_cleared": True,
+            "message": "🏆 Relay Complete! Congratulations, you conquered all 5 rounds!",
+            "next_round": None,
+            "next_question_index": 0,
+            "is_completed": True
+        }
 
-    # Reset question index for next round while preserving meta (assigned_r1_index)
-    meta_info["current_question_index"] = 0
-    rounds_completed.append(meta_info)
-
-    next_round = round_num + 1
-    is_relay_complete = round_num >= 5
-
-    progress_data = {
-        "student_id": student_id,
-        "relay_name": relay_name,
-        "current_round": 6 if is_relay_complete else next_round,
-        "rounds_completed": json.dumps(rounds_completed),
-        "is_completed": is_relay_complete,
-        "completed_at": now if is_relay_complete else None,
-    }
-
-    if progress:
-        db.table("tech_relay_progress") \
-            .update(progress_data) \
-            .eq("id", progress["id"]) \
-            .execute()
     else:
-        progress_data["started_at"] = now
-        db.table("tech_relay_progress") \
-            .insert(progress_data) \
-            .execute()
-
-    return {
-        "success": True,
-        "round_cleared": True,
-        "message": "🏆 Relay Complete! Congratulations!" if is_relay_complete else f"Round {round_num} cleared! Round {next_round} unlocked.",
-        "next_round": None if is_relay_complete else next_round,
-        "next_question_index": 0,
-        "is_completed": is_relay_complete
-    }
+        raise HTTPException(status_code=400, detail="Invalid round number")
 
 
 # ══════════════════════════════════════════════════════════════════

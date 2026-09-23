@@ -873,10 +873,12 @@ export interface TechRelayRound {
 export interface TechRelayProgress {
   current_round: number;
   current_question_index: number;
-  rounds_completed: Array<{ round: number; completed_at: string; attempts: number; forced?: boolean; questions_solved?: number }>;
+  rounds_completed: Array<{ round: number; completed_at: string; attempts: number; forced?: boolean; questions_solved?: number; user_answer?: string; solved_indices?: number[] }>;
   is_completed: boolean;
   started_at: string | null;
   completed_at: string | null;
+  r1_answer?: string;
+  r3_solved?: number[];
 }
 
 export interface TechRelaySubmitResult {
@@ -887,6 +889,11 @@ export interface TechRelaySubmitResult {
   next_question_index?: number;
   total_questions?: number;
   is_completed?: boolean;
+  r1_answer?: string;
+  r3_solved?: number[];
+  solved_count?: number;
+  score?: number;
+  total?: number;
 }
 
 export async function fetchTechRelayConfig(): Promise<TechRelayRound[]> {
