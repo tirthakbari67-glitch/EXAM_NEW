@@ -1,8 +1,8 @@
 -- ============================================================
 -- Migration V20: Tech Relay Rounds 1 to 4 Redefinition
--- 1. Round 1: Identity Gadgets (Word/Gadget identification)
+-- 1. Round 1: Identity Gadgets (11 Gadgets with Character Clues)
 -- 2. Round 2: Password Verification Gate (Validates based on Round 1 answer)
--- 3. Round 3: Find a Code Error (10 debugging questions, >= 3 correct required)
+-- 3. Round 3: HTML Basic Practice Assessment (10 MCQs, >= 3 correct required)
 -- 4. Round 4: Tech Quiz (10 MCQs, >= 4 correct required)
 -- ============================================================
 
@@ -17,7 +17,7 @@ SET
   round_type = 'gadget',
   time_limit_seconds = 0,
   correct_answer = 'CAMERA',
-  content = '{
+  content = $json${
     "title": "Identity Gadgets",
     "description": "Character clue puzzle: deduce the tech gadget from letter clues.",
     "questions": [
@@ -176,7 +176,7 @@ SET
         ]
       }
     ]
-  }'::jsonb
+  }$json$::jsonb
 WHERE round_number = 1;
 
 -- Round 2: Password Verification Gate
@@ -186,7 +186,7 @@ SET
   round_type = 'puzzle',
   time_limit_seconds = 0,
   correct_answer = 'VERIFY_ROUND1_PASSWORD',
-  content = '{
+  content = $json${
     "title": "Password Verification Gate",
     "instruction": "Verify your clearance by entering the security password corresponding to your Round 1 gadget to unlock Round 3.",
     "rule": "Password matching Round 1 Gadget Codename",
@@ -203,7 +203,7 @@ SET
       "PRINTER": "42BLUEK7Y1P",
       "HEADSET": "PWR588F32"
     }
-  }'::jsonb
+  }$json$::jsonb
 WHERE round_number = 2;
 
 -- Round 3: HTML Basic Practice Assessment (10 MCQs, >= 3 correct needed)
@@ -213,7 +213,7 @@ SET
   round_type = 'mcq',
   time_limit_seconds = 0,
   correct_answer = 'HTML_3_OF_10',
-  content = '{
+  content = $json${
     "target_required": 3,
     "quiz_title": "HTML Basic Practice Assessment",
     "subject": "Web Technologies / Programming for Problem Solving",
@@ -284,7 +284,7 @@ SET
         "explanation": "<tr> stands for table row, which contains table cells (<td> or <th>)."
       }
     ]
-  }'::jsonb
+  }$json$::jsonb
 WHERE round_number = 3;
 
 -- Round 4: Tech Quiz (Pool of 10 MCQs, >= 4 correct needed)
@@ -294,7 +294,7 @@ SET
   round_type = 'mcq',
   time_limit_seconds = 0,
   correct_answer = 'MCQ_4_OF_10',
-  content = '{
+  content = $json${
     "target_required": 4,
     "quiz_title": "Introductory Engineering MCQ Assessment",
     "questions": [
@@ -325,7 +325,7 @@ SET
       },
       {
         "question": "What does \"Wi-Fi\" stand for in wireless networking?",
-        "options": ["Wireless Fidelity", "Wide Field", "Wired Filter", "It doesn''t stand for anything (it''s just a catchphrase)"],
+        "options": ["Wireless Fidelity", "Wide Field", "Wired Filter", "It doesn't stand for anything (it's just a catchphrase)"],
         "correct": 3
       },
       {
@@ -334,7 +334,7 @@ SET
         "correct": 0
       },
       {
-        "question": "What is the main function of a computer''s RAM (Random Access Memory)?",
+        "question": "What is the main function of a computer's RAM (Random Access Memory)?",
         "options": [
           "Permanent storage for photos and videos",
           "Temporary working memory for active tasks",
@@ -354,5 +354,5 @@ SET
         "correct": 0
       }
     ]
-  }'::jsonb
+  }$json$::jsonb
 WHERE round_number = 4;
