@@ -200,20 +200,30 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
   {
     relay_name: "Tech Relay",
     round_number: 5,
-    round_title: "Decode Vault Password",
+    round_title: "Crack Final Password",
     round_type: "password",
-    correct_answer: "TECHRELAY",
+    correct_answer: "CRACK_PASSWORD_10_STEP",
     time_limit_seconds: 0,
     content: {
-      questions: [
-        {
-          id: "c1",
-          cipher_text: "GVXSIVOZB",
-          cipher_type: "Atbash Cipher",
-          hint: "Reverse the alphabet: A ↔ Z, B ↔ Y, C ↔ X, ... T ↔ G, E ↔ V",
-          correct_answer: "TECHRELAY",
-        },
+      workflow_type: "10_step_master_password",
+      description: "Sequential 10-step interactive master key assembly with uppercase transformation",
+      steps: [
+        { step: 1, name: "Base Name", desc: "Initial codename/identifier string" },
+        { step: 2, name: "Number Addition", desc: "Append numeric entropy value" },
+        { step: 3, name: "Math Challenge", question: "14 × 7 = ?", answer: "98" },
+        { step: 4, name: "Brand Logo Selection", options: ["NEXUS", "OCTOCAT", "CYBER"] },
+        { step: 5, name: "Color Choice", options: ["CYAN", "VIOLET", "EMERALD"] },
+        { step: 6, name: "Tech Tag", options: ["TS", "PY", "GO", "RUST"] },
+        { step: 7, name: "Special Symbol", options: ["!", "#", "$", "&"] },
+        { step: 8, name: "Verification Digit", digit: "7" },
+        { step: 9, name: "String Assembly", desc: "Sequential combined token stream" },
+        { step: 10, name: "Final Master Password", desc: "UPPERCASE encoding & vault unlock" },
       ],
+      math_num1: 14,
+      math_num2: 7,
+      math_op: "×",
+      math_answer: "98",
+      verify_digit: "7",
     },
   },
 ];
@@ -549,6 +559,21 @@ export default function TechRelayAdminPage() {
     });
     const templateContent: any = r3Default.content;
     setQuestionsList(JSON.parse(JSON.stringify(templateContent.questions || [])));
+    setContentJson(JSON.stringify(templateContent, null, 2));
+  };
+
+  const handleConvertToCrackPassword = () => {
+    const r5Default = DEFAULT_ROUNDS.find((d) => d.round_number === 5);
+    if (!r5Default || !editingRound) return;
+    setEditingRound({
+      ...editingRound,
+      round_title: "Crack Final Password",
+      round_type: "password",
+      correct_answer: "CRACK_PASSWORD_10_STEP",
+      time_limit_seconds: 0,
+    });
+    const templateContent: any = r5Default.content;
+    setQuestionsList([]);
     setContentJson(JSON.stringify(templateContent, null, 2));
   };
 
@@ -1472,6 +1497,50 @@ export default function TechRelayAdminPage() {
               </div>
             )}
 
+            {/* One-click conversion banner if Round 5 is not yet Crack Final Password */}
+            {editingRound.round_number === 5 && (editingRound.round_title !== "Crack Final Password" || questionsList.some((q) => q.cipher_text)) && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(16, 185, 129, 0.15))",
+                  border: "1px solid rgba(6, 182, 212, 0.4)",
+                  borderRadius: 12,
+                  padding: "12px 16px",
+                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, color: "#67e8f9", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>🔐</span> <span>Round 5 is currently set to legacy Cipher</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>
+                    Switch to the modern 10-Step Interactive Master Password Assembly Workflow component.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleConvertToCrackPassword}
+                  style={{
+                    background: "linear-gradient(135deg, #06b6d4, #10b981)",
+                    border: "none",
+                    borderRadius: 8,
+                    color: "#fff",
+                    padding: "8px 16px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 0 15px rgba(6, 182, 212, 0.4)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ⚡ Convert Round 5 to 10-Step Workflow
+                </button>
+              </div>
+            )}
+
             {/* Basic Info */}
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
@@ -1495,11 +1564,20 @@ export default function TechRelayAdminPage() {
                     if (newType === "mcq" && (!newTitle || newTitle.toLowerCase().includes("error") || newTitle.toLowerCase().includes("debug"))) {
                       newTitle = editingRound.round_number === 3 ? "Code & Logic Quiz" : "Speed Tech Quiz";
                     }
+                    if (newType === "password" && (!newTitle || newTitle.toLowerCase().includes("decode") || newTitle.toLowerCase().includes("cipher"))) {
+                      newTitle = "Crack Final Password";
+                    }
                     setEditingRound({ ...editingRound, round_type: newType, round_title: newTitle });
                     if (newType === "mcq" && (!questionsList[0] || !("options" in questionsList[0]))) {
                       const def = DEFAULT_ROUNDS.find((d) => d.round_number === (editingRound.round_number || 3))?.content as any;
                       if (def?.questions) {
                         setQuestionsList(JSON.parse(JSON.stringify(def.questions)));
+                        setContentJson(JSON.stringify(def, null, 2));
+                      }
+                    }
+                    if (newType === "password") {
+                      const def = DEFAULT_ROUNDS.find((d) => d.round_number === 5)?.content as any;
+                      if (def) {
                         setContentJson(JSON.stringify(def, null, 2));
                       }
                     }
@@ -1509,7 +1587,7 @@ export default function TechRelayAdminPage() {
                   <option value="puzzle">Problem Puzzle (Statement & Answer)</option>
                   <option value="mcq">Multiple Choice Quiz (MCQs)</option>
                   <option value="debug">Find Code Error (Code Snippet)</option>
-                  <option value="password">Decode Vault Password (Cipher)</option>
+                  <option value="password">Crack Final Password (10-Step Interactive Workflow)</option>
                 </select>
               </div>
             </div>
@@ -1776,51 +1854,103 @@ export default function TechRelayAdminPage() {
                       </>
                     )}
 
-                    {/* Form for Password */}
+                    {/* Form for Password / 10-Step Crack Password */}
                     {editingRound.round_type === "password" && (
-                      <>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                        <div
+                          style={{
+                            background: "rgba(6, 182, 212, 0.08)",
+                            border: "1px solid rgba(6, 182, 212, 0.3)",
+                            borderRadius: 12,
+                            padding: "14px 16px",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#67e8f9", fontWeight: 700, fontSize: 14 }}>
+                            <span>✨</span> <span>10-Step Sequential Interactive Workflow Component Active</span>
+                          </div>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", margin: "4px 0 10px", lineHeight: 1.5 }}>
+                            Round 5 features the full interactive master key cracking component. Students execute all 10 steps sequentially:
+                          </p>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#67e8f9" }}>1. Base Name:</strong> Initial alias or codename
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#a5b4fc" }}>2. Number Addition:</strong> Numeric value (+42, +101)
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#fbbf24" }}>3. Math Challenge:</strong> 14 × 7 = 98 calculation
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#c084fc" }}>4. Brand Logo:</strong> NEXUS / OCTOCAT / CYBER
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#f472b6" }}>5. Color Choice:</strong> CYAN / VIOLET / EMERALD
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#34d399" }}>6. Tech Tag:</strong> TS / PY / GO / RUST
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#f87171" }}>7. Special Symbol:</strong> ! / # / $ / &
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#2dd4bf" }}>8. Verify Digit:</strong> Parity Checksum [7]
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#60a5fa" }}>9. String Assembly:</strong> Sequential stream buffer
+                            </div>
+                            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, fontSize: 11, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <strong style={{ color: "#4ade80" }}>10. Master Key:</strong> UPPERCASE vault unlock
+                            </div>
+                          </div>
+                        </div>
+
                         <div className={styles.formRow}>
                           <div className={styles.formGroup}>
-                            <label className={styles.formLabel}>Cipher Text</label>
+                            <label className={styles.formLabel}>Step 3 Math Arithmetic Challenge</label>
                             <input
                               className={styles.formInput}
-                              placeholder="e.g. GVXSIVOZB"
-                              value={q.cipher_text || ""}
-                              onChange={(e) => handleUpdateQuestion(qIdx, "cipher_text", e.target.value)}
+                              placeholder="e.g. 14 × 7"
+                              value={q.math_question || "14 × 7"}
+                              onChange={(e) => handleUpdateQuestion(qIdx, "math_question", e.target.value)}
                             />
                           </div>
                           <div className={styles.formGroup}>
-                            <label className={styles.formLabel}>Cipher Type</label>
+                            <label className={styles.formLabel}>Step 3 Expected Calculation Answer</label>
                             <input
                               className={styles.formInput}
-                              placeholder="e.g. Atbash Cipher / Caesar Cipher"
-                              value={q.cipher_type || ""}
-                              onChange={(e) => handleUpdateQuestion(qIdx, "cipher_type", e.target.value)}
+                              placeholder="e.g. 98"
+                              value={q.math_answer || "98"}
+                              onChange={(e) => handleUpdateQuestion(qIdx, "math_answer", e.target.value)}
                             />
                           </div>
                         </div>
 
                         <div className={styles.formRow}>
                           <div className={styles.formGroup}>
-                            <label className={styles.formLabel}>Hint (Optional)</label>
+                            <label className={styles.formLabel}>Step 8 Verification Checksum Digit</label>
                             <input
                               className={styles.formInput}
-                              placeholder="Decryption hint..."
-                              value={q.hint || ""}
-                              onChange={(e) => handleUpdateQuestion(qIdx, "hint", e.target.value)}
+                              placeholder="e.g. 7"
+                              value={q.verify_digit || "7"}
+                              onChange={(e) => handleUpdateQuestion(qIdx, "verify_digit", e.target.value)}
                             />
                           </div>
                           <div className={styles.formGroup}>
-                            <label className={styles.formLabel}>Decoded Password (Answer)</label>
+                            <label className={styles.formLabel}>Master Vault Key (Fallback or Override)</label>
                             <input
                               className={styles.formInput}
-                              placeholder="Decrypted plaintext password..."
-                              value={q.correct_answer || ""}
-                              onChange={(e) => handleUpdateQuestion(qIdx, "correct_answer", e.target.value)}
+                              placeholder="CRACK_PASSWORD_10_STEP"
+                              value={q.correct_answer || editingRound.correct_answer || "CRACK_PASSWORD_10_STEP"}
+                              onChange={(e) => {
+                                handleUpdateQuestion(qIdx, "correct_answer", e.target.value);
+                                setEditingRound({ ...editingRound, correct_answer: e.target.value });
+                              }}
                             />
                           </div>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}

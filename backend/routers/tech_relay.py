@@ -133,9 +133,33 @@ DEFAULT_ROUND_3_MCQ_CONTENT = {
 }
 
 
-def auto_upgrade_round_3_to_mcq(rounds: list, db) -> None:
-    """If Round 3 is still the legacy 'debug' type, update database to MCQ format automatically."""
+DEFAULT_ROUND_5_WORKFLOW_CONTENT = {
+    "workflow_type": "10_step_master_password",
+    "description": "Sequential 10-step interactive master key assembly with uppercase transformation",
+    "steps": [
+        {"step": 1, "name": "Base Name", "desc": "Initial codename/identifier string"},
+        {"step": 2, "name": "Number Addition", "desc": "Append numeric entropy value"},
+        {"step": 3, "name": "Math Challenge", "question": "14 × 7", "answer": "98"},
+        {"step": 4, "name": "Brand Logo Selection", "options": ["NEXUS", "OCTOCAT", "CYBER"]},
+        {"step": 5, "name": "Color Choice", "options": ["CYAN", "VIOLET", "EMERALD"]},
+        {"step": 6, "name": "Tech Tag", "options": ["TS", "PY", "GO", "RUST"]},
+        {"step": 7, "name": "Special Symbol", "options": ["!", "#", "$", "&"]},
+        {"step": 8, "name": "Verification Digit", "digit": "7"},
+        {"step": 9, "name": "String Assembly", "desc": "Sequential combined token stream"},
+        {"step": 10, "name": "Final Master Password", "desc": "UPPERCASE encoding & vault unlock"},
+    ],
+    "math_num1": 14,
+    "math_num2": 7,
+    "math_op": "×",
+    "math_answer": "98",
+    "verify_digit": "7",
+}
+
+
+def auto_upgrade_rounds_to_latest(rounds: list, db) -> None:
+    """Auto-upgrades Round 3 to MCQ and Round 5 to 10-step Crack Final Password workflow."""
     for r in rounds:
+        # Round 3: Ensure MCQ format
         if r.get("round_number") == 3 and (r.get("round_type") != "mcq" or "code error" in str(r.get("round_title", "")).lower()):
             try:
                 db.table("tech_relay_config").update({
@@ -152,7 +176,26 @@ def auto_upgrade_round_3_to_mcq(rounds: list, db) -> None:
                 r["time_limit_seconds"] = 0
                 r["content"] = DEFAULT_ROUND_3_MCQ_CONTENT
             except Exception as e:
-                print(f"[TECH_RELAY] auto_upgrade_round_3_to_mcq note: {e}")
+                print(f"[TECH_RELAY] auto_upgrade Round 3 note: {e}")
+
+        # Round 5: Ensure 10-step Crack Final Password format
+        if r.get("round_number") == 5 and ("decode" in str(r.get("round_title", "")).lower() or "cipher" in str(r.get("content", "")).lower() or (r.get("time_limit_seconds") or 0) > 0):
+            try:
+                db.table("tech_relay_config").update({
+                    "round_type": "password",
+                    "round_title": "Crack Final Password",
+                    "correct_answer": "CRACK_PASSWORD_10_STEP",
+                    "time_limit_seconds": 0,
+                    "content": json.dumps(DEFAULT_ROUND_5_WORKFLOW_CONTENT),
+                }).eq("round_number", 5).execute()
+
+                r["round_type"] = "password"
+                r["round_title"] = "Crack Final Password"
+                r["correct_answer"] = "CRACK_PASSWORD_10_STEP"
+                r["time_limit_seconds"] = 0
+                r["content"] = DEFAULT_ROUND_5_WORKFLOW_CONTENT
+            except Exception as e:
+                print(f"[TECH_RELAY] auto_upgrade Round 5 note: {e}")
 
 
 @router.get("/config")
@@ -166,7 +209,7 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
             .order("round_number") \
             .execute()
         rounds = result.data or []
-        auto_upgrade_round_3_to_mcq(rounds, db)
+        auto_upgrade_rounds_to_latest(rounds, db)
 
         sanitized_rounds = []
         for r in rounds:
@@ -632,7 +675,7 @@ async def admin_get_config(_: bool = Depends(verify_admin)):
             .order("round_number") \
             .execute()
         rounds = result.data or []
-        auto_upgrade_round_3_to_mcq(rounds, db)
+        auto_upgrade_rounds_to_latest(rounds, db)
         for r in rounds:
             if isinstance(r.get("content"), str):
                 try:
