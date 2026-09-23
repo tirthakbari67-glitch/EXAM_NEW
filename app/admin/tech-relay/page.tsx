@@ -425,22 +425,42 @@ export default function TechRelayAdminPage() {
   const handleResetStudent = async (student: TechRelayParticipant) => {
     if (!confirm(`Reset all Tech Relay progress for ${student.name} (${student.usn})? This will start them back at Round 1.`)) return;
     try {
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.student_id === student.student_id
+            ? { ...p, has_started: false, current_round: 1, rounds_completed: [], is_completed: false, warnings: 0 }
+            : p
+        )
+      );
+      setLeaderboard((prev) => prev.filter((e) => e.student_id !== student.student_id));
       await resetTechRelayStudent(student.student_id);
       await loadData();
       await refreshObserver();
+      alert(`✅ Successfully reset ${student.name} (${student.usn}) back to Round 1!`);
     } catch (err: any) {
       alert("Reset failed: " + (err?.message || err));
+      await loadData();
     }
   };
 
   const handleResetStudentById = async (studentId: string, name: string, usn: string) => {
-    if (!confirm(`Reset all Tech Relay progress for ${name} (${usn})? This will start them back at Round 1.`)) return;
+    if (!confirm(`Reset all Tech Relay progress for ${name} (${usn})? This will remove them from leaderboard and start them back at Round 1.`)) return;
     try {
+      setLeaderboard((prev) => prev.filter((e) => e.student_id !== studentId));
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.student_id === studentId
+            ? { ...p, has_started: false, current_round: 1, rounds_completed: [], is_completed: false, warnings: 0 }
+            : p
+        )
+      );
       await resetTechRelayStudent(studentId);
       await loadData();
       await refreshObserver();
+      alert(`✅ Successfully reset ${name} (${usn})!`);
     } catch (err: any) {
       alert("Reset failed: " + (err?.message || err));
+      await loadData();
     }
   };
 
@@ -450,12 +470,24 @@ export default function TechRelayAdminPage() {
     }
     try {
       setSaving(true);
+      setLeaderboard([]);
+      setParticipants((prev) =>
+        prev.map((p) => ({
+          ...p,
+          has_started: false,
+          current_round: 1,
+          rounds_completed: [],
+          is_completed: false,
+          warnings: 0,
+        }))
+      );
       await resetAllTechRelay("Tech Relay");
       await loadData();
       await refreshObserver();
       alert("✅ Tech Relay tournament has been completely reset! Leaderboard and all contestant progress cleared.");
     } catch (err: any) {
       alert("Reset tournament failed: " + (err?.detail || err?.message || String(err)));
+      await loadData();
     } finally {
       setSaving(false);
     }
@@ -1380,7 +1412,12 @@ export default function TechRelayAdminPage() {
                     </td>
                     <td>{entry.branch || "—"}</td>
                     <td>
-                      <span className={styles.roundBadge}>Round {entry.current_round}</span>
+                      <span
+                        className={entry.is_completed || entry.current_round > 5 ? styles.completedBadge : styles.roundBadge}
+                        style={entry.is_completed || entry.current_round > 5 ? { background: "rgba(52, 211, 153, 0.15)", color: "#34d399", border: "1px solid rgba(52, 211, 153, 0.4)" } : undefined}
+                      >
+                        {entry.is_completed || entry.current_round > 5 ? "🏆 All Cleared (5/5)" : `Round ${entry.current_round}`}
+                      </span>
                     </td>
                     <td>{entry.rounds_completed} / 5</td>
                     <td>{entry.total_attempts}</td>

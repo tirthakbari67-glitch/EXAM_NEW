@@ -895,7 +895,7 @@ export async function fetchTechRelayConfig(): Promise<TechRelayRound[]> {
 }
 
 export async function fetchTechRelayProgress(): Promise<TechRelayProgress> {
-  return apiFetch<TechRelayProgress>("/tech-relay/progress");
+  return apiFetch<TechRelayProgress>(`/tech-relay/progress?_t=${Date.now()}`);
 }
 
 export async function startTechRelay(
@@ -927,7 +927,7 @@ export async function submitTechRelayRound(
 
 // Admin Tech Relay
 export async function fetchTechRelayAdminConfig(): Promise<TechRelayRound[]> {
-  const data = await adminFetch<{ rounds: TechRelayRound[] }>("/tech-relay/admin/config");
+  const data = await adminFetch<{ rounds: TechRelayRound[] }>(`/tech-relay/admin/config?_t=${Date.now()}`);
   return data.rounds;
 }
 
@@ -970,7 +970,7 @@ export async function fetchTechRelayAdminStudents(
   includeAll: boolean = true
 ): Promise<TechRelayParticipant[]> {
   const data = await adminFetch<{ students: TechRelayParticipant[] }>(
-    `/tech-relay/admin/students?relay_name=${encodeURIComponent(relayName)}&include_all=${includeAll}`
+    `/tech-relay/admin/students?relay_name=${encodeURIComponent(relayName)}&include_all=${includeAll}&_t=${Date.now()}`
   );
   return data.students || [];
 }
@@ -1041,9 +1041,9 @@ export async function fetchTechRelayLeaderboard(
   relayName: string = "Tech Relay"
 ): Promise<TechRelayLeaderboardEntry[]> {
   const data = await adminFetch<{ leaderboard: TechRelayLeaderboardEntry[] }>(
-    `/tech-relay/admin/leaderboard?relay_name=${encodeURIComponent(relayName)}`
+    `/tech-relay/admin/leaderboard?relay_name=${encodeURIComponent(relayName)}&_t=${Date.now()}`
   );
-  return data.leaderboard;
+  return data.leaderboard || [];
 }
 
 
