@@ -969,20 +969,46 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
     # ROUND 1: Identity Gadgets
     # ══════════════════════════════════════════════════════════════
     if round_num == 1:
+        clean_ans = str(answer).strip().upper()
+
+        # Official valid gadget names from Round 1
+        valid_gadgets = {
+            "CAMERA", "ROUTER", "MODEM", "DRONE", "TABLET",
+            "SERVER", "SWITCH", "WEBCAM", "SENSOR", "PRINTER", "HEADSET",
+            "MINI ROUTER", "MINI_ROUTER", "SOUNDBAR", "MASTER SWITCH",
+            "MASTER_SWITCH", "SERVER RACK", "SERVER_RACK", "DEVICE",
+            "SENSOR UNIT", "SENSOR_UNIT"
+        }
+
+        canonical_map = {
+            "MINI ROUTER": "MODEM",
+            "MINI_ROUTER": "MODEM",
+            "DEVICE": "TABLET",
+            "SERVER RACK": "SERVER",
+            "SERVER_RACK": "SERVER",
+            "MASTER SWITCH": "SWITCH",
+            "MASTER_SWITCH": "SWITCH",
+            "SENSOR UNIT": "SENSOR",
+            "SENSOR_UNIT": "SENSOR",
+            "SOUNDBAR": "HEADSET"
+        }
+
         assigned_idx = get_student_assigned_r1_index(
             student_id=student_id,
             relay_name=relay_name,
-            total_questions=len(questions) if has_multi_questions else 1,
+            total_questions=len(questions) if has_multi_questions else 11,
             db=db
         )
         target_q = questions[assigned_idx] if (has_multi_questions and assigned_idx < len(questions)) else (questions[0] if has_multi_questions else {})
         expected = target_q.get("correct_answer") or target_q.get("answer") or target_q.get("gadget_name") or round_config.get("correct_answer") or ""
 
-        if str(answer).strip().upper() != str(expected).strip().upper():
+        # Validate answer: accept if matches expected gadget OR if it is any one of the official 11 gadgets
+        if clean_ans != str(expected).strip().upper() and clean_ans not in valid_gadgets:
             return {"success": False, "message": "Incorrect gadget name! Check the character clues carefully and try again."}
 
-        clean_ans = answer.strip().upper()
-        meta_info["r1_answer"] = clean_ans
+        # Normalize canonical gadget name for session state & Round 2 password matching
+        canonical_ans = canonical_map.get(clean_ans, clean_ans)
+        meta_info["r1_answer"] = canonical_ans
         meta_info["current_question_index"] = 0
 
         existing_entry = next((r for r in rounds_completed if r.get("round") == 1), None)
