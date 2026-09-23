@@ -300,477 +300,196 @@ function PasswordGateRound({
   );
 }
 
-interface DebugQuestionItem {
-  id?: string;
-  title?: string;
-  language?: string;
-  code?: string;
-  bug_description?: string;
-  hint?: string;
-  options?: string[];
+interface HtmlQuestionItem {
+  question: string;
+  options: string[];
   correct?: number;
-  correct_answer?: string;
+  explanation?: string;
 }
 
-function FindCodeErrorRound({
+const DEFAULT_R3_HTML_QUESTIONS: HtmlQuestionItem[] = [
+  {
+    question: "What does HTML stand for?",
+    options: [
+      "Hyper Trainer Marking Language",
+      "Hyper Text Markup Language",
+      "Hyper Text Marketing Language",
+      "Hyper Tool Multi Language",
+    ],
+    correct: 1,
+    explanation: "HTML stands for Hyper Text Markup Language, the standard markup language for web pages.",
+  },
+  {
+    question: "Which HTML tag is used to create the largest heading?",
+    options: ["<head>", "<h6>", "<heading>", "<h1>"],
+    correct: 3,
+    explanation: "<h1> defines the most important and largest heading, down to <h6> which is the smallest.",
+  },
+  {
+    question: "What is the correct HTML tag for inserting a line break?",
+    options: ["<lb>", "<break>", "<br>", "<ln>"],
+    correct: 2,
+    explanation: "<br> inserts a single line break in the text.",
+  },
+  {
+    question: "Which HTML tag is used to create a hyperlink?",
+    options: ["<link>", "<a>", "<href>", "<url>"],
+    correct: 1,
+    explanation: "The anchor tag <a> is used to create hyperlinks connecting one page to another.",
+  },
+  {
+    question: "Which attribute is used to specify the URL of an image in the <img> tag?",
+    options: ["src", "href", "link", "url"],
+    correct: 0,
+    explanation: "The src (source) attribute specifies the path/URL to the image file.",
+  },
+  {
+    question: "Which HTML element is used to define an unordered list (bulleted list)?",
+    options: ["<ol>", "<list>", "<ul>", "<bl>"],
+    correct: 2,
+    explanation: "<ul> creates an unordered bulleted list, whereas <ol> creates an ordered numbered list.",
+  },
+  {
+    question: "How can you make a text bold in HTML?",
+    options: ["<bold>", "<b>", "<bb>", "<emp>"],
+    correct: 1,
+    explanation: "The <b> tag (or <strong>) is used to render text in bold format.",
+  },
+  {
+    question: "Which character is used to indicate an end tag in HTML?",
+    options: ["^", "*", "/", "\\"],
+    correct: 2,
+    explanation: "A forward slash (< / >) is used inside the closing tag to denote the end of an element.",
+  },
+  {
+    question: "What is the correct HTML element for inserting an image?",
+    options: ["<image>", "<img>", "<pic>", "<src>"],
+    correct: 1,
+    explanation: "<img> is the standard tag used to embed images in an HTML document.",
+  },
+  {
+    question: "Which HTML element is used to create a table row?",
+    options: ["<tb>", "<tr>", "<td>", "<table-row>"],
+    correct: 1,
+    explanation: "<tr> stands for table row, which contains table cells (<td> or <th>).",
+  },
+];
+
+function HtmlAssessmentRound({
   round,
-  r3Solved,
-  onSubmitQuestion,
-  submitting,
+  answers,
+  setAnswers,
 }: {
   round: TechRelayRound;
-  r3Solved: number[];
-  onSubmitQuestion: (qIdx: number, fixAnswer: string) => Promise<void>;
-  submitting: boolean;
+  answers: number[];
+  setAnswers: (v: number[]) => void;
 }) {
   const content = parseContent<{
     target_required?: number;
-    questions?: DebugQuestionItem[];
+    quiz_title?: string;
+    subject?: string;
+    questions?: HtmlQuestionItem[];
   }>(round.content);
 
   const rawQuestions = content?.questions || [];
-  const questions: DebugQuestionItem[] = rawQuestions.length >= 10 ? rawQuestions : [
-    {
-      id: "d1",
-      title: "Off-by-One Loop Error",
-      language: "python",
-      code: "def sum_numbers(n):\n    total = 0\n    for i in range(1, n):  # Bug: excludes n\n        total += i\n    return total",
-      bug_description: "The loop stops at n - 1 instead of including n in the total sum.",
-      hint: "Change range stop value to include n.",
-      options: [
-        "for i in range(1, n + 1):",
-        "for i in range(0, n - 1):",
-        "for i in range(n):",
-        "for i in range(1, total):",
-      ],
-      correct: 0,
-      correct_answer: "range(1, n + 1)",
-    },
-    {
-      id: "d2",
-      title: "Array Index Out of Bounds",
-      language: "javascript",
-      code: "function getLastElement(arr) {\n    return arr[arr.length]; // Bug: undefined\n}",
-      bug_description: "Array indexing is zero-based; arr[arr.length] accesses an undefined index.",
-      hint: "Last index is length minus one.",
-      options: [
-        "return arr[arr.length + 1];",
-        "return arr[arr.length - 1];",
-        "return arr[-1];",
-        "return arr[0];",
-      ],
-      correct: 1,
-      correct_answer: "arr[arr.length - 1]",
-    },
-    {
-      id: "d3",
-      title: "Mutable Default Argument",
-      language: "python",
-      code: "def append_to_list(val, my_list=[]):\n    my_list.append(val)\n    return my_list",
-      bug_description: "Default list argument is evaluated once at definition, accumulating across calls.",
-      hint: "Use None as default and initialize inside function.",
-      options: [
-        "def append_to_list(val, my_list=None):",
-        "def append_to_list(val, my_list=tuple()):",
-        "def append_to_list(val, my_list=dict()):",
-        "def append_to_list(val, my_list=\"\"):",
-      ],
-      correct: 0,
-      correct_answer: "None",
-    },
-    {
-      id: "d4",
-      title: "Type Mismatch Concatenation",
-      language: "python",
-      code: "def get_user_badge(name, score):\n    return name + \" - Score: \" + score  # TypeError",
-      bug_description: "Cannot concatenate str and int objects directly in Python.",
-      hint: "Convert score to string before concatenation.",
-      options: [
-        "return name + \" - Score: \" + str(score)",
-        "return name + \" - Score: \" + int(score)",
-        "return name + \" - Score: \" + [score]",
-        "return name + \" - Score: \" + (score)",
-      ],
-      correct: 0,
-      correct_answer: "str(score)",
-    },
-    {
-      id: "d5",
-      title: "UnboundLocalError in Variable Scope",
-      language: "python",
-      code: "counter = 0\ndef increment():\n    counter += 1  # UnboundLocalError\n    return counter",
-      bug_description: "Modifying global counter inside function without global declaration raises UnboundLocalError.",
-      hint: "Declare counter as global inside increment.",
-      options: [
-        "local counter",
-        "global counter",
-        "static counter",
-        "var counter",
-      ],
-      correct: 1,
-      correct_answer: "global counter",
-    },
-    {
-      id: "d6",
-      title: "Missing Return Statement",
-      language: "javascript",
-      code: "function calculateDiscount(price, percentage) {\n    const discount = price * (percentage / 100);\n    const finalPrice = price - discount;\n}",
-      bug_description: "Function calculates finalPrice but returns undefined because return statement is missing.",
-      hint: "Return finalPrice at the end of the function.",
-      options: [
-        "return finalPrice;",
-        "output finalPrice;",
-        "export finalPrice;",
-        "yield finalPrice;",
-      ],
-      correct: 0,
-      correct_answer: "return finalPrice",
-    },
-    {
-      id: "d7",
-      title: "Dictionary KeyError Crash",
-      language: "python",
-      code: "def get_user_role(profile):\n    return profile[\"role\"]  # Crashes if missing",
-      bug_description: "Direct bracket access raises KeyError if \"role\" key is absent.",
-      hint: "Use safe dictionary access with default fallback.",
-      options: [
-        "return profile.get(\"role\", \"guest\")",
-        "return profile[\"role\"] or None",
-        "return profile.find(\"role\")",
-        "return profile.index(\"role\")",
-      ],
-      correct: 0,
-      correct_answer: "profile.get(\"role\", \"guest\")",
-    },
-    {
-      id: "d8",
-      title: "Strict Equality Type Coercion",
-      language: "javascript",
-      code: "function isZero(val) {\n    return val === 0;  // Fails if val is \"0\"\n}",
-      bug_description: "Strict equality operator does not coerce string \"0\" to number 0.",
-      hint: "Cast val to Number before comparison.",
-      options: [
-        "return Number(val) === 0;",
-        "return val == \"0\" && val === 0;",
-        "return typeof val === 0;",
-        "return String(val) === 0;",
-      ],
-      correct: 0,
-      correct_answer: "Number(val) === 0",
-    },
-    {
-      id: "d9",
-      title: "Tuple Immutability TypeError",
-      language: "python",
-      code: "coords = (12.5, 77.2)\ncoords[0] = 13.0  # TypeError: tuple does not support item assignment",
-      bug_description: "Tuples are immutable in Python; elements cannot be reassigned in-place.",
-      hint: "Create a new tuple or use a list for mutable coordinates.",
-      options: [
-        "coords = (13.0, coords[1])",
-        "coords.append(13.0)",
-        "coords.update(0, 13.0)",
-        "set(coords)[0] = 13.0",
-      ],
-      correct: 0,
-      correct_answer: "coords = (13.0, coords[1])",
-    },
-    {
-      id: "d10",
-      title: "Division by Zero Exception",
-      language: "python",
-      code: "def compute_ratio(a, b):\n    return a / b  # Crashes if b is 0",
-      bug_description: "ZeroDivisionError raised when b equals zero.",
-      hint: "Check if denominator b is not zero before dividing.",
-      options: [
-        "return a / b if b != 0 else 0",
-        "return a // 0",
-        "return b / a",
-        "return a % b",
-      ],
-      correct: 0,
-      correct_answer: "return a / b if b != 0 else 0",
-    },
-  ];
+  const questions: HtmlQuestionItem[] =
+    rawQuestions.length >= 10 ? rawQuestions : DEFAULT_R3_HTML_QUESTIONS;
+  const answeredCount = answers.filter((a) => a !== -1).length;
+  const optionLetters = ["A", "B", "C", "D"];
 
-  const [activeQIdx, setActiveQIdx] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-
-  useEffect(() => {
-    setSelectedOption(null);
-  }, [activeQIdx]);
-
-  const currentQ = questions[activeQIdx] || questions[0];
-  const isCurrentSolved = r3Solved.includes(activeQIdx);
-  const solvedCount = r3Solved.length;
-  const targetRequired = 3;
+  function handleSelect(qIndex: number, optionIndex: number) {
+    const updated = [...answers];
+    updated[qIndex] = optionIndex;
+    setAnswers(updated);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      {/* Solved Tracker Banner */}
+      {/* Round 3 Assessment Banner */}
       <div
         style={{
           background: "rgba(255, 255, 255, 0.03)",
           border: "1px solid rgba(255, 255, 255, 0.08)",
           borderRadius: 14,
           padding: "16px 20px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.5px" }}>
-              DEBUGGING CHALLENGE POOL (10 QUESTIONS)
-            </div>
-            <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.8)", fontWeight: 600 }}>
-              Must answer at least <span style={{ color: "#34d399", fontWeight: 800 }}>3 questions correctly</span> to unlock Round 4
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "6px 16px",
-              borderRadius: 20,
-              background: solvedCount >= targetRequired ? "rgba(52, 211, 153, 0.2)" : "rgba(99, 102, 241, 0.2)",
-              border: solvedCount >= targetRequired ? "1px solid rgba(52, 211, 153, 0.5)" : "1px solid rgba(99, 102, 241, 0.4)",
-              color: solvedCount >= targetRequired ? "#34d399" : "#a5b4fc",
-              fontSize: 13,
-              fontWeight: 800,
-            }}
-          >
-            {solvedCount >= targetRequired ? "✅ UNLOCK CRITERIA MET" : `SOLVED: ${solvedCount} / ${targetRequired}`}
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ height: 6, background: "rgba(255, 255, 255, 0.08)", borderRadius: 3, overflow: "hidden" }}>
-          <div
-            style={{
-              height: "100%",
-              width: `${Math.min(100, (solvedCount / targetRequired) * 100)}%`,
-              background: "linear-gradient(90deg, #6366f1, #34d399)",
-              transition: "width 0.4s ease",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* 10 Question Selector Pills */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
-        {questions.map((q, idx) => {
-          const solved = r3Solved.includes(idx);
-          const isActive = activeQIdx === idx;
-          return (
-            <button
-              key={`q-pill-${idx}`}
-              type="button"
-              onClick={() => setActiveQIdx(idx)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 10,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                background: isActive
-                  ? "rgba(99, 102, 241, 0.3)"
-                  : solved
-                  ? "rgba(52, 211, 153, 0.15)"
-                  : "rgba(255, 255, 255, 0.04)",
-                border: isActive
-                  ? "1px solid #818cf8"
-                  : solved
-                  ? "1px solid rgba(52, 211, 153, 0.4)"
-                  : "1px solid rgba(255, 255, 255, 0.08)",
-                color: isActive ? "#ffffff" : solved ? "#34d399" : "rgba(255, 255, 255, 0.6)",
-                transition: "all 0.2s",
-              }}
-            >
-              <span>{solved ? "✓" : `Q${idx + 1}`}</span>
-              <span>{solved ? `Q${idx + 1}` : ""}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Current Question Workspace */}
-      <div
-        style={{
-          background: "rgba(255, 255, 255, 0.02)",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 16,
-          padding: "20px",
           display: "flex",
-          flexDirection: "column",
-          gap: 16,
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 10,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc" }}>
-              Question {activeQIdx + 1} of {questions.length}:
-            </span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
-              {currentQ.title || `Challenge ${activeQIdx + 1}`}
-            </span>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", letterSpacing: "0.5px" }}>
+            ROUND 3: HTML BASIC PRACTICE ASSESSMENT (10 MCQs)
           </div>
-          {currentQ.language && (
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                textTransform: "uppercase",
-                padding: "3px 10px",
-                borderRadius: 6,
-                background: "rgba(6, 182, 212, 0.15)",
-                border: "1px solid rgba(6, 182, 212, 0.3)",
-                color: "#38bdf8",
-              }}
-            >
-              {currentQ.language}
-            </span>
-          )}
+          <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.6)", marginTop: 2 }}>
+            Subject: Web Technologies / Programming for Problem Solving
+          </div>
+          <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.9)", fontWeight: 600, marginTop: 4 }}>
+            Must answer at least <span style={{ color: "#34d399", fontWeight: 800 }}>3 questions correctly</span> to unlock Round 4
+          </div>
         </div>
-
-        {/* Buggy Code block */}
-        <div className={styles.codeBlock}>
-          <pre className={styles.codePre}>{currentQ.code || "// No code available"}</pre>
+        <div
+          style={{
+            padding: "6px 16px",
+            borderRadius: 20,
+            background:
+              answeredCount === questions.length ? "rgba(52, 211, 153, 0.2)" : "rgba(249, 115, 22, 0.15)",
+            border:
+              answeredCount === questions.length
+                ? "1px solid rgba(52, 211, 153, 0.5)"
+                : "1px solid rgba(249, 115, 22, 0.4)",
+            fontSize: 12,
+            fontWeight: 800,
+            color: answeredCount === questions.length ? "#34d399" : "#fb923c",
+          }}
+        >
+          {answeredCount} / {questions.length} Answered
         </div>
+      </div>
 
-        {/* Bug description */}
-        {currentQ.bug_description && (
-          <div className={styles.bugDesc}>
-            <span>🐛</span>
-            <span>{currentQ.bug_description}</span>
-          </div>
-        )}
-
-        {/* Hint */}
-        {currentQ.hint && (
-          <div className={styles.hintBox}>
-            <span className={styles.hintIcon}>💡</span>
-            <span>{currentQ.hint}</span>
-          </div>
-        )}
-
-        {/* Fix options */}
-        {currentQ.options && currentQ.options.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255, 255, 255, 0.7)" }}>
-              Select the correct fix:
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-              {currentQ.options.map((opt, oi) => {
-                const isSelected = selectedOption === oi;
+      {/* 10 Questions List */}
+      <div className={styles.mcqList}>
+        {questions.map((q, qi) => (
+          <div key={`html-mcq-${round.round_number}-${qi}`} className={styles.mcqQuestion}>
+            <p className={styles.mcqQuestionText}>
+              <span style={{ color: "#f97316", fontWeight: 800, marginRight: 6 }}>{qi + 1}.</span>
+              {q.question}
+            </p>
+            <div className={styles.mcqOptions}>
+              {q.options.map((opt, oi) => {
+                const isSelected = answers[qi] === oi;
                 return (
                   <div
-                    key={`opt-d-${activeQIdx}-${oi}`}
-                    onClick={() => {
-                      if (!isCurrentSolved) setSelectedOption(oi);
-                    }}
+                    key={`opt-r3-${qi}-${oi}`}
+                    className={`${styles.mcqOption} ${isSelected ? styles.mcqOptionSelected : ""}`}
+                    onClick={() => handleSelect(qi, oi)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        if (!isCurrentSolved) setSelectedOption(oi);
-                      }
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "12px 16px",
-                      borderRadius: 10,
-                      background: isSelected ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.03)",
-                      border: isSelected ? "1px solid #818cf8" : "1px solid rgba(255, 255, 255, 0.08)",
-                      cursor: isCurrentSolved ? "default" : "pointer",
-                      transition: "all 0.2s",
+                      if (e.key === "Enter" || e.key === " ") handleSelect(qi, oi);
                     }}
                   >
-                    <div
+                    <div className={`${styles.mcqRadio} ${isSelected ? styles.mcqRadioSelected : ""}`}>
+                      {isSelected && <div className={styles.mcqRadioDot} />}
+                    </div>
+                    <span
                       style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: "50%",
-                        border: isSelected ? "2px solid #818cf8" : "2px solid rgba(255, 255, 255, 0.3)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
+                        fontWeight: 700,
+                        color: isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.4)",
+                        marginRight: 4,
                       }}
                     >
-                      {isSelected && (
-                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#818cf8" }} />
-                      )}
-                    </div>
-                    <code style={{ fontSize: 13, fontFamily: "monospace", color: isSelected ? "#fff" : "rgba(255, 255, 255, 0.8)" }}>
-                      {opt}
-                    </code>
+                      {optionLetters[oi]})
+                    </span>
+                    <span>{opt}</span>
                   </div>
                 );
               })}
             </div>
           </div>
-        )}
-
-        {/* Submit button for this question */}
-        <div style={{ marginTop: 6 }}>
-          {isCurrentSolved ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "12px 18px",
-                borderRadius: 10,
-                background: "rgba(52, 211, 153, 0.12)",
-                border: "1px solid rgba(52, 211, 153, 0.3)",
-                color: "#34d399",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              <span>✅ Question {activeQIdx + 1} Error Resolved!</span>
-              <button
-                type="button"
-                onClick={() => {
-                  const nextUnsolved = questions.findIndex((_, i) => !r3Solved.includes(i));
-                  if (nextUnsolved !== -1) setActiveQIdx(nextUnsolved);
-                  else setActiveQIdx((activeQIdx + 1) % questions.length);
-                }}
-                style={{
-                  background: "rgba(52, 211, 153, 0.2)",
-                  border: "1px solid rgba(52, 211, 153, 0.4)",
-                  color: "#fff",
-                  padding: "5px 12px",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Next Question →
-              </button>
-            </div>
-          ) : (
-            <button
-              className={styles.submitBtn}
-              onClick={() => {
-                if (selectedOption !== null) {
-                  onSubmitQuestion(activeQIdx, String(selectedOption));
-                }
-              }}
-              disabled={submitting || selectedOption === null}
-              style={{ width: "100%" }}
-            >
-              {submitting
-                ? "Validating Fix..."
-                : selectedOption === null
-                ? "Select a fix above to submit"
-                : `Submit Fix for Question ${activeQIdx + 1} →`}
-            </button>
-          )}
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -952,6 +671,7 @@ export default function TechRelayPage() {
 
   // Input states
   const [textAnswer, setTextAnswer] = useState("");
+  const [r3Answers, setR3Answers] = useState<number[]>(() => new Array(10).fill(-1));
   const [mcqAnswers, setMcqAnswers] = useState<number[]>([]);
 
   // AntiCheat state
@@ -1097,7 +817,14 @@ export default function TechRelayPage() {
     let answer = typeof overrideAnswer === "string" ? overrideAnswer : textAnswer;
     const targetQIdx = typeof overrideQIdx === "number" ? overrideQIdx : currentQuestionIndex;
 
-    if (currentRoundConfig.round_type === "mcq") {
+    if (activeRound === 3) {
+      if (r3Answers.length < 10 || r3Answers.some((a) => a === -1)) {
+        setFeedback({ type: "error", message: "Please select an answer for all 10 HTML questions before submitting!" });
+        setSubmitting(false);
+        return;
+      }
+      answer = JSON.stringify({ answers: r3Answers });
+    } else if (activeRound === 4 || currentRoundConfig.round_type === "mcq") {
       const content = parseContent<{ questions?: unknown[] }>(currentRoundConfig.content);
       const qCount = content?.questions?.length || 10;
       if (mcqAnswers.length < qCount || mcqAnswers.some((a) => a === -1)) {
@@ -1600,11 +1327,10 @@ export default function TechRelayPage() {
               />
             )}
             {activeRound === 3 && (
-              <FindCodeErrorRound
+              <HtmlAssessmentRound
                 round={activeRoundConfig}
-                r3Solved={r3Solved}
-                onSubmitQuestion={(qIdx, fixAns) => handleSubmit(fixAns, qIdx)}
-                submitting={submitting}
+                answers={r3Answers}
+                setAnswers={setR3Answers}
               />
             )}
             {activeRound === 4 && (
@@ -1625,8 +1351,8 @@ export default function TechRelayPage() {
               />
             )}
 
-            {/* Bottom Submit Button (for Round 1 and Round 4; Rounds 2, 3, 5 have their own action buttons) */}
-            {activeRound === currentRound && (activeRound === 1 || activeRound === 4) && (
+            {/* Bottom Submit Button (for Round 1, Round 3, and Round 4; Rounds 2 and 5 have their own action buttons) */}
+            {activeRound === currentRound && (activeRound === 1 || activeRound === 3 || activeRound === 4) && (
               <div className={styles.inputGroup} style={{ marginTop: 20 }}>
                 <button
                   className={styles.submitBtn}
@@ -1638,6 +1364,8 @@ export default function TechRelayPage() {
                     ? "Checking..."
                     : activeRound === 4
                     ? "Submit Tech Quiz (10 MCQs) →"
+                    : activeRound === 3
+                    ? "Submit HTML Assessment (10 MCQs) →"
                     : "Submit Gadget Name →"}
                 </button>
               </div>

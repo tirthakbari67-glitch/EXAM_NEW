@@ -112,168 +112,85 @@ DEFAULT_ROUND_2_GATE_CONTENT = {
     "rule": "Exact match with Round 1 Gadget Codename"
 }
 
-DEFAULT_ROUND_3_DEBUG_CONTENT = {
+DEFAULT_ROUND_3_HTML_CONTENT = {
     "target_required": 3,
+    "quiz_title": "HTML Basic Practice Assessment",
+    "subject": "Web Technologies / Programming for Problem Solving",
     "questions": [
         {
-            "id": "d1",
-            "title": "Off-by-One Loop Error",
-            "language": "python",
-            "code": "def sum_numbers(n):\n    total = 0\n    for i in range(1, n):  # Bug: excludes n\n        total += i\n    return total",
-            "bug_description": "The loop stops at n - 1 instead of including n in the total sum.",
-            "hint": "Change range stop value to include n.",
+            "id": "h1",
+            "question": "What does HTML stand for?",
             "options": [
-                "for i in range(1, n + 1):",
-                "for i in range(0, n - 1):",
-                "for i in range(n):",
-                "for i in range(1, total):"
-            ],
-            "correct": 0,
-            "correct_answer": "range(1, n + 1)"
-        },
-        {
-            "id": "d2",
-            "title": "Array Index Out of Bounds",
-            "language": "javascript",
-            "code": "function getLastElement(arr) {\n    return arr[arr.length]; // Bug: undefined\n}",
-            "bug_description": "Array indexing is zero-based; arr[arr.length] accesses an undefined index.",
-            "hint": "Last index is length minus one.",
-            "options": [
-                "return arr[arr.length + 1];",
-                "return arr[arr.length - 1];",
-                "return arr[-1];",
-                "return arr[0];"
+                "Hyper Trainer Marking Language",
+                "Hyper Text Markup Language",
+                "Hyper Text Marketing Language",
+                "Hyper Tool Multi Language"
             ],
             "correct": 1,
-            "correct_answer": "arr[arr.length - 1]"
+            "explanation": "HTML stands for Hyper Text Markup Language, the standard markup language for web pages."
         },
         {
-            "id": "d3",
-            "title": "Mutable Default Argument",
-            "language": "python",
-            "code": "def append_to_list(val, my_list=[]):\n    my_list.append(val)\n    return my_list",
-            "bug_description": "Default list argument is evaluated once at definition, accumulating across calls.",
-            "hint": "Use None as default and initialize inside function.",
-            "options": [
-                "def append_to_list(val, my_list=None):",
-                "def append_to_list(val, my_list=tuple()):",
-                "def append_to_list(val, my_list=dict()):",
-                "def append_to_list(val, my_list=\"\"):"
-            ],
-            "correct": 0,
-            "correct_answer": "None"
+            "id": "h2",
+            "question": "Which HTML tag is used to create the largest heading?",
+            "options": ["<head>", "<h6>", "<heading>", "<h1>"],
+            "correct": 3,
+            "explanation": "<h1> defines the most important and largest heading, down to <h6> which is the smallest."
         },
         {
-            "id": "d4",
-            "title": "Type Mismatch Concatenation",
-            "language": "python",
-            "code": "def get_user_badge(name, score):\n    return name + \" - Score: \" + score  # TypeError",
-            "bug_description": "Cannot concatenate str and int objects directly in Python.",
-            "hint": "Convert score to string before concatenation.",
-            "options": [
-                "return name + \" - Score: \" + str(score)",
-                "return name + \" - Score: \" + int(score)",
-                "return name + \" - Score: \" + [score]",
-                "return name + \" - Score: \" + (score)"
-            ],
-            "correct": 0,
-            "correct_answer": "str(score)"
+            "id": "h3",
+            "question": "What is the correct HTML tag for inserting a line break?",
+            "options": ["<lb>", "<break>", "<br>", "<ln>"],
+            "correct": 2,
+            "explanation": "<br> inserts a single line break in the text."
         },
         {
-            "id": "d5",
-            "title": "UnboundLocalError in Variable Scope",
-            "language": "python",
-            "code": "counter = 0\ndef increment():\n    counter += 1  # UnboundLocalError\n    return counter",
-            "bug_description": "Modifying global counter inside function without global declaration raises UnboundLocalError.",
-            "hint": "Declare counter as global inside increment.",
-            "options": [
-                "local counter",
-                "global counter",
-                "static counter",
-                "var counter"
-            ],
+            "id": "h4",
+            "question": "Which HTML tag is used to create a hyperlink?",
+            "options": ["<link>", "<a>", "<href>", "<url>"],
             "correct": 1,
-            "correct_answer": "global counter"
+            "explanation": "The anchor tag <a> is used to create hyperlinks connecting one page to another."
         },
         {
-            "id": "d6",
-            "title": "Missing Return Statement",
-            "language": "javascript",
-            "code": "function calculateDiscount(price, percentage) {\n    const discount = price * (percentage / 100);\n    const finalPrice = price - discount;\n}",
-            "bug_description": "Function calculates finalPrice but returns undefined because return statement is missing.",
-            "hint": "Return finalPrice at the end of the function.",
-            "options": [
-                "return finalPrice;",
-                "output finalPrice;",
-                "export finalPrice;",
-                "yield finalPrice;"
-            ],
+            "id": "h5",
+            "question": "Which attribute is used to specify the URL of an image in the <img> tag?",
+            "options": ["src", "href", "link", "url"],
             "correct": 0,
-            "correct_answer": "return finalPrice"
+            "explanation": "The src (source) attribute specifies the path/URL to the image file."
         },
         {
-            "id": "d7",
-            "title": "Dictionary KeyError Crash",
-            "language": "python",
-            "code": "def get_user_role(profile):\n    return profile[\"role\"]  # Crashes if missing",
-            "bug_description": "Direct bracket access raises KeyError if \"role\" key is absent.",
-            "hint": "Use safe dictionary access with default fallback.",
-            "options": [
-                "return profile.get(\"role\", \"guest\")",
-                "return profile[\"role\"] or None",
-                "return profile.find(\"role\")",
-                "return profile.index(\"role\")"
-            ],
-            "correct": 0,
-            "correct_answer": "profile.get(\"role\", \"guest\")"
+            "id": "h6",
+            "question": "Which HTML element is used to define an unordered list (bulleted list)?",
+            "options": ["<ol>", "<list>", "<ul>", "<bl>"],
+            "correct": 2,
+            "explanation": "<ul> creates an unordered bulleted list, whereas <ol> creates an ordered numbered list."
         },
         {
-            "id": "d8",
-            "title": "Strict Equality Type Coercion",
-            "language": "javascript",
-            "code": "function isZero(val) {\n    return val === 0;  // Fails if val is \"0\"\n}",
-            "bug_description": "Strict equality operator does not coerce string \"0\" to number 0.",
-            "hint": "Cast val to Number before comparison.",
-            "options": [
-                "return Number(val) === 0;",
-                "return val == \"0\" && val === 0;",
-                "return typeof val === 0;",
-                "return String(val) === 0;"
-            ],
-            "correct": 0,
-            "correct_answer": "Number(val) === 0"
+            "id": "h7",
+            "question": "How can you make a text bold in HTML?",
+            "options": ["<bold>", "<b>", "<bb>", "<emp>"],
+            "correct": 1,
+            "explanation": "The <b> tag (or <strong>) is used to render text in bold format."
         },
         {
-            "id": "d9",
-            "title": "Tuple Immutability TypeError",
-            "language": "python",
-            "code": "coords = (12.5, 77.2)\ncoords[0] = 13.0  # TypeError: tuple does not support item assignment",
-            "bug_description": "Tuples are immutable in Python; elements cannot be reassigned in-place.",
-            "hint": "Create a new tuple or use a list for mutable coordinates.",
-            "options": [
-                "coords = (13.0, coords[1])",
-                "coords.append(13.0)",
-                "coords.update(0, 13.0)",
-                "set(coords)[0] = 13.0"
-            ],
-            "correct": 0,
-            "correct_answer": "coords = (13.0, coords[1])"
+            "id": "h8",
+            "question": "Which character is used to indicate an end tag in HTML?",
+            "options": ["^", "*", "/", "\\"],
+            "correct": 2,
+            "explanation": "A forward slash (< / >) is used inside the closing tag to denote the end of an element."
         },
         {
-            "id": "d10",
-            "title": "Division by Zero Exception",
-            "language": "python",
-            "code": "def compute_ratio(a, b):\n    return a / b  # Crashes if b is 0",
-            "bug_description": "ZeroDivisionError raised when b equals zero.",
-            "hint": "Check if denominator b is not zero before dividing.",
-            "options": [
-                "return a / b if b != 0 else 0",
-                "return a // 0",
-                "return b / a",
-                "return a % b"
-            ],
-            "correct": 0,
-            "correct_answer": "return a / b if b != 0 else 0"
+            "id": "h9",
+            "question": "What is the correct HTML element for inserting an image?",
+            "options": ["<image>", "<img>", "<pic>", "<src>"],
+            "correct": 1,
+            "explanation": "<img> is the standard tag used to embed images in an HTML document."
+        },
+        {
+            "id": "h10",
+            "question": "Which HTML element is used to create a table row?",
+            "options": ["<tb>", "<tr>", "<td>", "<table-row>"],
+            "correct": 1,
+            "explanation": "<tr> stands for table row, which contains table cells (<td> or <th>)."
         }
     ]
 }
@@ -392,30 +309,30 @@ def auto_upgrade_rounds_to_latest(rounds: list, db) -> None:
             if not isinstance(r.get("content"), dict) or "rule" not in r.get("content", {}):
                 r["content"] = DEFAULT_ROUND_2_GATE_CONTENT
 
-        # Round 3: Find a Code Error (10-question debug pool, target 3)
-        if r_num == 3 and (r.get("round_type") != "debug" or "find" not in str(r.get("round_title", "")).lower()):
+        # Round 3: HTML Basic Practice Assessment (10 HTML MCQs, target 3)
+        if r_num == 3 and (r.get("round_type") != "mcq" or "html" not in str(r.get("round_title", "")).lower()):
             try:
                 db.table("tech_relay_config").update({
-                    "round_title": "Find a Code Error",
-                    "round_type": "debug",
-                    "correct_answer": "DEBUG_3_OF_10",
+                    "round_title": "HTML Basic Practice Assessment",
+                    "round_type": "mcq",
+                    "correct_answer": "HTML_3_OF_10",
                     "time_limit_seconds": 0,
-                    "content": json.dumps(DEFAULT_ROUND_3_DEBUG_CONTENT),
+                    "content": json.dumps(DEFAULT_ROUND_3_HTML_CONTENT),
                 }).eq("round_number", 3).execute()
             except Exception as e:
                 print(f"[TECH_RELAY] auto_upgrade Round 3 note: {e}")
-            r["round_title"] = "Find a Code Error"
-            r["round_type"] = "debug"
-            r["correct_answer"] = "DEBUG_3_OF_10"
+            r["round_title"] = "HTML Basic Practice Assessment"
+            r["round_type"] = "mcq"
+            r["correct_answer"] = "HTML_3_OF_10"
             r["time_limit_seconds"] = 0
-            r["content"] = DEFAULT_ROUND_3_DEBUG_CONTENT
+            r["content"] = DEFAULT_ROUND_3_HTML_CONTENT
         elif r_num == 3:
-            r["round_title"] = "Find a Code Error"
-            r["round_type"] = "debug"
-            r["correct_answer"] = "DEBUG_3_OF_10"
+            r["round_title"] = "HTML Basic Practice Assessment"
+            r["round_type"] = "mcq"
+            r["correct_answer"] = "HTML_3_OF_10"
             r["time_limit_seconds"] = 0
             if not isinstance(r.get("content"), dict) or len(r.get("content", {}).get("questions", [])) < 10:
-                r["content"] = DEFAULT_ROUND_3_DEBUG_CONTENT
+                r["content"] = DEFAULT_ROUND_3_HTML_CONTENT
 
         # Round 4: Tech Quiz (10-question MCQ pool, target 4)
         if r_num == 4 and (r.get("round_type") != "mcq" or "quiz" not in str(r.get("round_title", "")).lower()):
@@ -911,49 +828,50 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         return {
             "success": True,
             "round_cleared": True,
-            "message": "🔒 Access Granted! Password verified against Round 1 Gadget. Round 3 (Find a Code Error) Unlocked!",
+            "message": "🔒 Access Granted! Password verified against Round 1 Gadget. Round 3 (HTML Basic Practice Assessment) Unlocked!",
             "next_round": 3,
             "next_question_index": 0,
             "is_completed": False
         }
 
     # ══════════════════════════════════════════════════════════════
-    # ROUND 3: Find a Code Error (10 debugging questions, >= 3 correct needed)
+    # ROUND 3: HTML Basic Practice Assessment (10 MCQs, >= 3 correct needed)
     # ══════════════════════════════════════════════════════════════
     elif round_num == 3:
-        debug_questions = DEFAULT_ROUND_3_DEBUG_CONTENT["questions"]
+        html_questions = DEFAULT_ROUND_3_HTML_CONTENT["questions"]
         if has_multi_questions and len(questions) >= 10:
-            debug_questions = questions
+            html_questions = questions
 
-        if q_idx >= len(debug_questions):
-            q_idx = 0
+        # Check if full quiz answers submitted as JSON
+        submitted_answers = None
+        try:
+            if isinstance(answer, str) and "{" in answer:
+                parsed = json.loads(answer)
+                if isinstance(parsed, dict) and "answers" in parsed:
+                    submitted_answers = parsed.get("answers", [])
+            elif isinstance(answer, list):
+                submitted_answers = answer
+        except Exception:
+            submitted_answers = None
 
-        target_q = debug_questions[q_idx]
-        corr_opt = str(target_q.get("correct", 0))
-        corr_ans = str(target_q.get("correct_answer", "")).strip().lower()
-        options = target_q.get("options", [])
+        if submitted_answers is not None:
+            if len(submitted_answers) < len(html_questions) or any(a is None or a == -1 for a in submitted_answers):
+                return {
+                    "success": False,
+                    "message": f"Please answer all {len(html_questions)} HTML questions before submitting."
+                }
 
-        user_str = str(answer).strip().lower()
-        is_correct = (
-            user_str == corr_opt or
-            (corr_ans and corr_ans in user_str) or
-            (corr_opt.isdigit() and len(options) > int(corr_opt) and user_str == options[int(corr_opt)].strip().lower())
-        )
+            correct_count = 0
+            for i, q in enumerate(html_questions):
+                if i < len(submitted_answers) and int(submitted_answers[i]) == int(q.get("correct", 0)):
+                    correct_count += 1
 
-        if not is_correct:
-            return {
-                "success": False,
-                "message": f"Incorrect fix for Question {q_idx + 1}. Check the bug description & hint, then try again!"
-            }
+            if correct_count < 3:
+                return {
+                    "success": False,
+                    "message": f"You scored {correct_count}/10. At least 3 correct answers are required to unlock Round 4. Check your answers and try again!"
+                }
 
-        # Track solved questions
-        r3_solved = set(meta_info.get("r3_solved", []))
-        r3_solved.add(q_idx)
-        solved_list = sorted(list(r3_solved))
-        meta_info["r3_solved"] = solved_list
-        solved_count = len(solved_list)
-
-        if solved_count >= 3:
             # Round 3 Cleared!
             existing_entry = next((r for r in rounds_completed if r.get("round") == 3), None)
             attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
@@ -963,8 +881,9 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
                 "round": 3,
                 "completed_at": now,
                 "attempts": attempts,
-                "questions_solved": solved_count,
-                "solved_indices": solved_list
+                "score": correct_count,
+                "total": len(html_questions),
+                "questions_solved": correct_count
             })
             meta_info["current_question_index"] = 0
             rounds_completed.append(meta_info)
@@ -985,38 +904,97 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             return {
                 "success": True,
                 "round_cleared": True,
-                "message": f"🎯 Superb! You resolved {solved_count}/3 code errors! Round 4 (Tech Quiz) Unlocked.",
+                "message": f"🎯 Outstanding! You scored {correct_count}/10 on HTML Assessment! (Minimum 3 required). Round 4 (Tech Quiz) Unlocked.",
                 "next_round": 4,
                 "next_question_index": 0,
-                "r3_solved": solved_list,
-                "solved_count": solved_count,
                 "is_completed": False
             }
         else:
-            # Solved one more, but need 3
-            rounds_completed.append(meta_info)
-            progress_data = {
-                "student_id": student_id,
-                "relay_name": relay_name,
-                "current_round": 3,
-                "rounds_completed": json.dumps(rounds_completed),
-                "is_completed": False
-            }
-            if progress:
-                db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
-            else:
-                progress_data["started_at"] = now
-                db.table("tech_relay_progress").insert(progress_data).execute()
+            # Single question submission fallback
+            if q_idx >= len(html_questions):
+                q_idx = 0
+            target_q = html_questions[q_idx]
+            corr_opt = str(target_q.get("correct", 0))
+            options = target_q.get("options", [])
+            user_str = str(answer).strip().lower()
+            is_correct = (
+                user_str == corr_opt or
+                (corr_opt.isdigit() and len(options) > int(corr_opt) and user_str == options[int(corr_opt)].strip().lower())
+            )
+            if not is_correct:
+                return {
+                    "success": False,
+                    "message": f"Incorrect answer for Question {q_idx + 1}. Try again!"
+                }
 
-            return {
-                "success": True,
-                "round_cleared": False,
-                "message": f"✅ Question {q_idx + 1} Error Resolved! ({solved_count}/3 required).",
-                "next_question_index": (q_idx + 1) % len(debug_questions),
-                "r3_solved": solved_list,
-                "solved_count": solved_count,
-                "is_completed": False
-            }
+            r3_solved = set(meta_info.get("r3_solved", []))
+            r3_solved.add(q_idx)
+            solved_list = sorted(list(r3_solved))
+            meta_info["r3_solved"] = solved_list
+            solved_count = len(solved_list)
+
+            if solved_count >= 3:
+                existing_entry = next((r for r in rounds_completed if r.get("round") == 3), None)
+                attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+
+                rounds_completed = [r for r in rounds_completed if r.get("round") != 3]
+                rounds_completed.append({
+                    "round": 3,
+                    "completed_at": now,
+                    "attempts": attempts,
+                    "questions_solved": solved_count,
+                    "solved_indices": solved_list
+                })
+                meta_info["current_question_index"] = 0
+                rounds_completed.append(meta_info)
+
+                progress_data = {
+                    "student_id": student_id,
+                    "relay_name": relay_name,
+                    "current_round": 4,
+                    "rounds_completed": json.dumps(rounds_completed),
+                    "is_completed": False
+                }
+                if progress:
+                    db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+                else:
+                    progress_data["started_at"] = now
+                    db.table("tech_relay_progress").insert(progress_data).execute()
+
+                return {
+                    "success": True,
+                    "round_cleared": True,
+                    "message": f"🎯 Superb! You answered {solved_count}/3 questions correctly! Round 4 (Tech Quiz) Unlocked.",
+                    "next_round": 4,
+                    "next_question_index": 0,
+                    "r3_solved": solved_list,
+                    "solved_count": solved_count,
+                    "is_completed": False
+                }
+            else:
+                rounds_completed.append(meta_info)
+                progress_data = {
+                    "student_id": student_id,
+                    "relay_name": relay_name,
+                    "current_round": 3,
+                    "rounds_completed": json.dumps(rounds_completed),
+                    "is_completed": False
+                }
+                if progress:
+                    db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+                else:
+                    progress_data["started_at"] = now
+                    db.table("tech_relay_progress").insert(progress_data).execute()
+
+                return {
+                    "success": True,
+                    "round_cleared": False,
+                    "message": f"✅ Question {q_idx + 1} Correct! ({solved_count}/3 required).",
+                    "next_question_index": (q_idx + 1) % len(html_questions),
+                    "r3_solved": solved_list,
+                    "solved_count": solved_count,
+                    "is_completed": False
+                }
 
     # ══════════════════════════════════════════════════════════════
     # ROUND 4: Tech Quiz (10 MCQs, >= 4 correct needed)
