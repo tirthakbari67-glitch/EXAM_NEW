@@ -13,6 +13,7 @@ import {
   fetchTechRelayAdminStudents,
   forceUnlockTechRelay,
   resetTechRelayStudent,
+  resetAllTechRelay,
   removeTechRelayStudent,
   blockAdminStudent,
   unblockAdminStudent,
@@ -385,9 +386,38 @@ export default function TechRelayAdminPage() {
     if (!confirm(`Reset all Tech Relay progress for ${student.name} (${student.usn})? This will start them back at Round 1.`)) return;
     try {
       await resetTechRelayStudent(student.student_id);
+      await loadData();
       await refreshObserver();
     } catch (err: any) {
       alert("Reset failed: " + (err?.message || err));
+    }
+  };
+
+  const handleResetStudentById = async (studentId: string, name: string, usn: string) => {
+    if (!confirm(`Reset all Tech Relay progress for ${name} (${usn})? This will start them back at Round 1.`)) return;
+    try {
+      await resetTechRelayStudent(studentId);
+      await loadData();
+      await refreshObserver();
+    } catch (err: any) {
+      alert("Reset failed: " + (err?.message || err));
+    }
+  };
+
+  const handleResetAllRelay = async () => {
+    if (!confirm("⚠️ DANGER: Are you sure you want to reset the entire Tech Relay tournament?\n\nThis will wipe all contestant progress and reset the leaderboard to 0 so everyone can start fresh.")) {
+      return;
+    }
+    try {
+      setSaving(true);
+      await resetAllTechRelay("Tech Relay");
+      await loadData();
+      await refreshObserver();
+      alert("✅ Tech Relay tournament has been completely reset! Leaderboard and all contestant progress cleared.");
+    } catch (err: any) {
+      alert("Reset tournament failed: " + (err?.detail || err?.message || String(err)));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -712,6 +742,21 @@ export default function TechRelayAdminPage() {
             title="Load default 5 rounds with multiple questions"
           >
             ✨ Seed Rounds
+          </button>
+
+          <button
+            className={styles.backButton}
+            onClick={handleResetAllRelay}
+            disabled={saving}
+            style={{
+              background: "rgba(239, 68, 68, 0.12)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              color: "#f87171",
+              fontWeight: 700,
+            }}
+            title="Reset all contestant progress and clear leaderboard for Tech Relay"
+          >
+            🔄 Reset Tournament
           </button>
 
           <div className={styles.tabRow}>
@@ -1185,8 +1230,46 @@ export default function TechRelayAdminPage() {
          ══════════════════════════════════════════════════════════ */}
       {activeTab === "leaderboard" && (
         <div style={{ overflowX: "auto" }}>
+          {/* Leaderboard Toolbar with Reset All Button */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+            padding: "12px 18px",
+            background: "rgba(255, 255, 255, 0.03)",
+            borderRadius: 12,
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            flexWrap: "wrap",
+            gap: 12
+          }}>
+            <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.7)" }}>
+              🏆 Live Tournament Leaderboard • <strong>{leaderboard.length}</strong> active / completed contestant{leaderboard.length === 1 ? "" : "s"}
+            </div>
+            <button
+              onClick={handleResetAllRelay}
+              disabled={saving}
+              style={{
+                padding: "7px 16px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                background: "rgba(239, 68, 68, 0.15)",
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                color: "#f87171",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+              title="Wipe all participant progress and reset the entire leaderboard"
+            >
+              🔄 Reset Entire Leaderboard & Relay
+            </button>
+          </div>
+
           {leaderboard.length === 0 ? (
-            <div className={styles.emptyState}>No participants have completed Tech Relay yet.</div>
+            <div className={styles.emptyState}>No participants have started or completed Tech Relay yet.</div>
           ) : (
             <table className={styles.leaderboard}>
               <thead>
@@ -1199,6 +1282,7 @@ export default function TechRelayAdminPage() {
                   <th>Total Attempts</th>
                   <th>Status</th>
                   <th>Completed At</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1224,6 +1308,15 @@ export default function TechRelayAdminPage() {
                     </td>
                     <td style={{ fontSize: 12 }}>
                       {entry.completed_at ? new Date(entry.completed_at).toLocaleTimeString() : "—"}
+                    </td>
+                    <td>
+                      <button
+                        className={`${styles.actionBtn} ${styles.btnReset}`}
+                        onClick={() => handleResetStudentById(entry.student_id, entry.name, entry.usn)}
+                        title="Reset this student's score back to Round 1"
+                      >
+                        🔄 Reset
+                      </button>
                     </td>
                   </tr>
                 ))}

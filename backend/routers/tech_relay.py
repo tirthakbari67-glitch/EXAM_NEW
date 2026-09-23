@@ -44,6 +44,9 @@ class ResetStudentRequest(BaseModel):
     student_id: str
     relay_name: str = "Tech Relay"
 
+class ResetRelayRequest(BaseModel):
+    relay_name: str = "Tech Relay"
+
 class StartRelayRequest(BaseModel):
     start_code: str
     relay_name: str = "Tech Relay"
@@ -805,6 +808,21 @@ async def admin_reset_student(body: ResetStudentRequest, _: bool = Depends(verif
         return {"success": True, "message": "Student relay progress has been reset"}
     except Exception as e:
         print(f"[TECH_RELAY] admin_reset_student error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/admin/reset-all")
+async def admin_reset_all_relay(body: ResetRelayRequest, _: bool = Depends(verify_admin)):
+    """Reset all student progress for a relay so the entire tournament can start fresh."""
+    try:
+        db = get_supabase()
+        db.table("tech_relay_progress") \
+            .delete() \
+            .eq("relay_name", body.relay_name) \
+            .execute()
+        return {"success": True, "message": f"All student progress for '{body.relay_name}' has been wiped. Tournament reset successfully."}
+    except Exception as e:
+        print(f"[TECH_RELAY] admin_reset_all_relay error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

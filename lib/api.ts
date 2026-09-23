@@ -996,6 +996,15 @@ export async function resetTechRelayStudent(
   });
 }
 
+export async function resetAllTechRelay(
+  relayName: string = "Tech Relay"
+): Promise<{ success: boolean; message: string }> {
+  return adminFetch<{ success: boolean; message: string }>("/tech-relay/admin/reset-all", {
+    method: "POST",
+    body: JSON.stringify({ relay_name: relayName }),
+  });
+}
+
 export async function removeTechRelayStudent(
   studentId: string,
   relayName: string = "Tech Relay"
