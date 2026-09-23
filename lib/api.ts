@@ -967,7 +967,7 @@ export interface TechRelayParticipant {
 
 export async function fetchTechRelayAdminStudents(
   relayName: string = "Tech Relay",
-  includeAll: boolean = false
+  includeAll: boolean = true
 ): Promise<TechRelayParticipant[]> {
   const data = await adminFetch<{ students: TechRelayParticipant[] }>(
     `/tech-relay/admin/students?relay_name=${encodeURIComponent(relayName)}&include_all=${includeAll}`

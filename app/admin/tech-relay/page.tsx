@@ -270,7 +270,7 @@ export default function TechRelayAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRound, setFilterRound] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [showAllRegistered, setShowAllRegistered] = useState(false);
+  const [showAllRegistered, setShowAllRegistered] = useState(true);
 
   // Force Unlock Modal
   const [forceUnlockStudent, setForceUnlockStudent] = useState<TechRelayParticipant | null>(null);
@@ -332,6 +332,11 @@ export default function TechRelayAdminPage() {
   useEffect(() => {
     loadData();
 
+    // ── 4-second Polling for guaranteed live updates ─────────────
+    const pollInterval = setInterval(() => {
+      refreshObserver();
+    }, 4000);
+
     // ── Supabase Realtime Subscription ──────────────────────────
     const channel = supabase
       .channel("tech_relay_realtime_observer")
@@ -341,6 +346,7 @@ export default function TechRelayAdminPage() {
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [loadData, refreshObserver]);
@@ -713,7 +719,7 @@ export default function TechRelayAdminPage() {
               className={`${styles.tab} ${activeTab === "observer" ? styles.tabActive : ""}`}
               onClick={() => setActiveTab("observer")}
             >
-              🏃 Live Monitor ({showAllRegistered ? participants.length : startedParticipants.length})
+              🏃 Live Monitor ({participants.length})
             </button>
             <button
               className={`${styles.tab} ${activeTab === "rounds" ? styles.tabActive : ""}`}
@@ -739,8 +745,8 @@ export default function TechRelayAdminPage() {
           {/* Top Metrics Row */}
           <div className={styles.metricsGrid}>
             <div className={styles.metricCard}>
-              <div className={styles.metricLabel}>{showAllRegistered ? "Total Accounts" : "Started Contestants"}</div>
-              <div className={styles.metricValue}>{totalStudents}</div>
+              <div className={styles.metricLabel}>Total Registered</div>
+              <div className={styles.metricValue}>{participants.length}</div>
             </div>
             <div className={styles.metricCard}>
               <div className={styles.metricLabel} style={{ color: "#38bdf8" }}>⚡ Active in Relay</div>
@@ -893,9 +899,9 @@ export default function TechRelayAdminPage() {
                 color: showAllRegistered ? "#fbbf24" : "#a5b4fc",
                 whiteSpace: "nowrap",
               }}
-              title="Toggle between showing only active contestants and all database accounts"
+              title="Toggle between showing all database accounts and only started contestants"
             >
-              {showAllRegistered ? "👥 Showing All Accounts" : "⚡ Started Only (Code: Meet)"}
+              {showAllRegistered ? `👥 Showing All (${participants.length})` : `⚡ Started Only (${startedParticipants.length})`}
             </button>
           </div>
 
@@ -953,28 +959,53 @@ export default function TechRelayAdminPage() {
 
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span
-                              style={{
-                                padding: "3px 9px",
-                                borderRadius: 6,
-                                fontSize: 11,
-                                fontWeight: 800,
-                                background: isCompleted ? "rgba(52, 211, 153, 0.2)" : "rgba(99, 102, 241, 0.2)",
-                                color: isCompleted ? "#34d399" : "#a5b4fc",
-                                border: isCompleted ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(99, 102, 241, 0.4)",
-                              }}
-                            >
-                              {isCompleted ? "🏆 DONE" : `R${roundNum}`}
-                            </span>
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
-                              {isCompleted ? "All 5 Cleared" : roundTitle}
-                            </span>
+                            {!p.has_started ? (
+                              <>
+                                <span
+                                  style={{
+                                    padding: "3px 9px",
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    background: "rgba(255, 255, 255, 0.06)",
+                                    color: "rgba(255, 255, 255, 0.5)",
+                                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                                  }}
+                                >
+                                  GATE
+                                </span>
+                                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                                  Waiting for Start Code
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span
+                                  style={{
+                                    padding: "3px 9px",
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    background: isCompleted ? "rgba(52, 211, 153, 0.2)" : "rgba(99, 102, 241, 0.2)",
+                                    color: isCompleted ? "#34d399" : "#a5b4fc",
+                                    border: isCompleted ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(99, 102, 241, 0.4)",
+                                  }}
+                                >
+                                  {isCompleted ? "🏆 DONE" : `R${roundNum}`}
+                                </span>
+                                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+                                  {isCompleted ? "All 5 Cleared" : roundTitle}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </td>
 
                         <td>
                           <span style={{ fontSize: 12, fontWeight: 600, color: "#cbd5e1" }}>
-                            {isCompleted
+                            {!p.has_started
+                              ? "—"
+                              : isCompleted
                               ? "5/5 Cleared"
                               : `Q${(p.current_question_index || 0) + 1}`}
                           </span>

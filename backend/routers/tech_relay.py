@@ -653,7 +653,7 @@ async def admin_toggle_relay(body: RelayToggle, _: bool = Depends(verify_admin))
 @router.get("/admin/students")
 async def admin_get_relay_students(
     relay_name: str = "Tech Relay",
-    include_all: bool = False,
+    include_all: bool = True,
     _: bool = Depends(verify_admin)
 ):
     """Fetch students for Tech Relay live observer. Defaults to only students who have started."""
