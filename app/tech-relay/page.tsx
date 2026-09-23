@@ -410,13 +410,7 @@ export default function TechRelayPage() {
       setActiveRound(Math.min(currentRound, 5));
       setCurrentQuestionIndex(progressData.current_question_index || 0);
 
-      // Init MCQ answers if round 4 is active
-      const r4 = roundsData.find(r => r.round_number === 4);
-      if (r4) {
-        const content = parseContent<{ questions?: unknown[] }>(r4.content);
-        const qCount = content?.questions?.length || 0;
-        setMcqAnswers(new Array(qCount).fill(-1));
-      }
+      // Note: MCQ answers are automatically initialized by the activeRound useEffect
     } catch (e) {
       console.error("Failed to load Tech Relay:", e);
       setError("Failed to load Tech Relay. Make sure you are logged in.");
@@ -424,6 +418,18 @@ export default function TechRelayPage() {
       setLoading(false);
     }
   }, []);
+
+  // ── Sync MCQ Answer slots whenever active round is MCQ ─────────
+  useEffect(() => {
+    const currentCfg = rounds.find((r) => r.round_number === activeRound);
+    if (currentCfg && currentCfg.round_type === "mcq") {
+      const content = parseContent<{ questions?: unknown[] }>(currentCfg.content);
+      const qCount = content?.questions?.length || 0;
+      setMcqAnswers((prev) => (prev.length === qCount ? prev : new Array(qCount).fill(-1)));
+    } else {
+      setMcqAnswers([]);
+    }
+  }, [activeRound, rounds]);
 
   useEffect(() => {
     const token = localStorage.getItem("exam_token");
@@ -449,6 +455,13 @@ export default function TechRelayPage() {
 
     let answer = textAnswer;
     if (currentRoundConfig.round_type === "mcq") {
+      const content = parseContent<{ questions?: unknown[] }>(currentRoundConfig.content);
+      const qCount = content?.questions?.length || 0;
+      if (qCount > 0 && (mcqAnswers.length < qCount || mcqAnswers.some((a) => a === -1))) {
+        setFeedback({ type: "error", message: "Please select an answer for all questions before submitting!" });
+        setSubmitting(false);
+        return;
+      }
       answer = JSON.stringify({ answers: mcqAnswers });
     }
 

@@ -393,7 +393,27 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
 
     is_correct = False
 
-    if has_multi_questions:
+    if round_type == "mcq":
+        # MCQ format: student submits JSON array of answers for all questions in this round
+        quiz_questions = questions if has_multi_questions else (content.get("questions", []) if isinstance(content, dict) else [])
+        try:
+            submitted = json.loads(answer) if isinstance(answer, str) and "{" in answer else {"answers": [answer]}
+            submitted_answers = submitted.get("answers", [])
+            if len(submitted_answers) == len(quiz_questions) and len(quiz_questions) > 0:
+                is_correct = all(
+                    int(submitted_answers[i]) == int(quiz_questions[i].get("correct", 0))
+                    for i in range(len(quiz_questions))
+                )
+            else:
+                is_correct = False
+        except Exception as e:
+            print(f"[TECH_RELAY] MCQ validation note: {e}")
+            is_correct = False
+
+        if not is_correct:
+            return {"success": False, "message": "Incorrect answer. Check your options and try again!"}
+
+    elif has_multi_questions:
         # For Round 1, retrieve the student's assigned question index from the pool
         if round_num == 1 and len(questions) > 1:
             assigned_idx = get_student_assigned_r1_index(
@@ -408,18 +428,8 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
                 raise HTTPException(status_code=400, detail="Invalid question index for this round")
             target_q = questions[q_idx]
 
-        if round_type == "mcq":
-            expected = target_q.get("correct")
-            if expected is None:
-                expected = target_q.get("correct_answer")
-            try:
-                submitted_val = int(answer)
-                is_correct = (submitted_val == int(expected))
-            except (ValueError, TypeError):
-                is_correct = str(answer).strip().lower() == str(expected).strip().lower()
-        else:
-            expected = target_q.get("correct_answer") or target_q.get("answer") or target_q.get("correct") or ""
-            is_correct = str(answer).strip().lower() == str(expected).strip().lower()
+        expected = target_q.get("correct_answer") or target_q.get("answer") or target_q.get("correct") or ""
+        is_correct = str(answer).strip().lower() == str(expected).strip().lower()
 
         if not is_correct:
             return {"success": False, "message": "Incorrect answer. Try again!"}
@@ -466,21 +476,8 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
 
     else:
         # Legacy single question format
-        if round_type == "mcq":
-            try:
-                submitted = json.loads(answer)
-                submitted_answers = submitted.get("answers", [])
-                quiz_questions = content.get("questions", [])
-                if len(submitted_answers) == len(quiz_questions):
-                    is_correct = all(
-                        submitted_answers[i] == quiz_questions[i].get("correct")
-                        for i in range(len(quiz_questions))
-                    )
-            except Exception:
-                is_correct = False
-        else:
-            correct = (round_config.get("correct_answer") or "").strip().lower()
-            is_correct = answer.lower() == correct
+        correct = (round_config.get("correct_answer") or "").strip().lower()
+        is_correct = answer.lower() == correct
 
         if not is_correct:
             return {"success": False, "message": "Incorrect answer. Try again!"}

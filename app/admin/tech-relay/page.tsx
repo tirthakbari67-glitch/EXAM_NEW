@@ -126,19 +126,36 @@ const DEFAULT_ROUNDS: Array<Omit<TechRelayRound, "id" | "is_active"> & { relay_n
   {
     relay_name: "Tech Relay",
     round_number: 3,
-    round_title: "Find a Code Error",
-    round_type: "debug",
-    correct_answer: "fibonacci(n-2)",
+    round_title: "Code & Logic Quiz",
+    round_type: "mcq",
+    correct_answer: "mcq_all",
     time_limit_seconds: 0,
     content: {
       questions: [
         {
-          id: "d1",
-          language: "python",
-          code: "def fibonacci(n):\n    if n <= 0:\n        return 0\n    elif n == 1:\n        return 1\n    else:\n        return fibonacci(n-1) + fibonacci(n-3)  # Bug here!",
-          bug_description: "The recursive step has an incorrect term. Fix the bug.",
-          hint: "Fibonacci is the sum of previous two terms: F(n-1) + F(n-2)",
-          correct_answer: "fibonacci(n-2)",
+          question: "What is the output of print(type([])) in Python?",
+          options: ["<class 'list'>", "<class 'tuple'>", "<class 'dict'>", "<class 'set'>"],
+          correct: 0,
+        },
+        {
+          question: "What is the output of 2 ** 3 ** 2 in Python?",
+          options: ["64", "512", "256", "36"],
+          correct: 1,
+        },
+        {
+          question: "Which of the following is an immutable data type in Python?",
+          options: ["List", "Dictionary", "Tuple", "Set"],
+          correct: 2,
+        },
+        {
+          question: "What does len(set([1, 2, 2, 3, 3, 3])) return?",
+          options: ["6", "3", "1", "Error"],
+          correct: 1,
+        },
+        {
+          question: "In Python, which keyword combination is used to handle exceptions?",
+          options: ["try...catch", "try...except", "do...rescue", "handle...throw"],
+          correct: 1,
         },
       ],
     },
