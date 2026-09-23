@@ -102,6 +102,59 @@ def get_student_assigned_r1_index(student_id: str, relay_name: str, total_questi
     return hash_val % total_questions
 
 
+DEFAULT_ROUND_3_MCQ_CONTENT = {
+    "questions": [
+        {
+            "question": "What is the output of print(type([])) in Python?",
+            "options": ["<class 'list'>", "<class 'tuple'>", "<class 'dict'>", "<class 'set'>"],
+            "correct": 0,
+        },
+        {
+            "question": "What is the output of 2 ** 3 ** 2 in Python?",
+            "options": ["64", "512", "256", "36"],
+            "correct": 1,
+        },
+        {
+            "question": "Which of the following is an immutable data type in Python?",
+            "options": ["List", "Dictionary", "Tuple", "Set"],
+            "correct": 2,
+        },
+        {
+            "question": "What does len(set([1, 2, 2, 3, 3, 3])) return?",
+            "options": ["6", "3", "1", "Error"],
+            "correct": 1,
+        },
+        {
+            "question": "In Python, which keyword combination is used to handle exceptions?",
+            "options": ["try...catch", "try...except", "do...rescue", "handle...throw"],
+            "correct": 1,
+        },
+    ]
+}
+
+
+def auto_upgrade_round_3_to_mcq(rounds: list, db) -> None:
+    """If Round 3 is still the legacy 'debug' type, update database to MCQ format automatically."""
+    for r in rounds:
+        if r.get("round_number") == 3 and (r.get("round_type") != "mcq" or "code error" in str(r.get("round_title", "")).lower()):
+            try:
+                db.table("tech_relay_config").update({
+                    "round_type": "mcq",
+                    "round_title": "Code & Logic Quiz",
+                    "correct_answer": "mcq_all",
+                    "time_limit_seconds": 0,
+                    "content": json.dumps(DEFAULT_ROUND_3_MCQ_CONTENT),
+                }).eq("round_number", 3).execute()
+
+                r["round_type"] = "mcq"
+                r["round_title"] = "Code & Logic Quiz"
+                r["correct_answer"] = "mcq_all"
+                r["time_limit_seconds"] = 0
+                r["content"] = DEFAULT_ROUND_3_MCQ_CONTENT
+            except Exception as e:
+                print(f"[TECH_RELAY] auto_upgrade_round_3_to_mcq note: {e}")
+
+
 @router.get("/config")
 async def get_relay_config(current: dict = Depends(get_current_student)):
     """Get active relay config with all rounds (strips correct answers for anti-cheat)."""
@@ -113,6 +166,7 @@ async def get_relay_config(current: dict = Depends(get_current_student)):
             .order("round_number") \
             .execute()
         rounds = result.data or []
+        auto_upgrade_round_3_to_mcq(rounds, db)
 
         sanitized_rounds = []
         for r in rounds:
@@ -578,6 +632,7 @@ async def admin_get_config(_: bool = Depends(verify_admin)):
             .order("round_number") \
             .execute()
         rounds = result.data or []
+        auto_upgrade_round_3_to_mcq(rounds, db)
         for r in rounds:
             if isinstance(r.get("content"), str):
                 try:

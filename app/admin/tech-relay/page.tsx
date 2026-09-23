@@ -537,6 +537,21 @@ export default function TechRelayAdminPage() {
     }
   };
 
+  const handleConvertToMcq = () => {
+    const r3Default = DEFAULT_ROUNDS.find((d) => d.round_number === 3);
+    if (!r3Default || !editingRound) return;
+    setEditingRound({
+      ...editingRound,
+      round_title: "Code & Logic Quiz",
+      round_type: "mcq",
+      correct_answer: "mcq_all",
+      time_limit_seconds: 0,
+    });
+    const templateContent: any = r3Default.content;
+    setQuestionsList(JSON.parse(JSON.stringify(templateContent.questions || [])));
+    setContentJson(JSON.stringify(templateContent, null, 2));
+  };
+
   const handleAddQuestion = () => {
     const qId = `q_${Date.now()}`;
     const roundType = editingRound?.round_type || "puzzle";
@@ -633,7 +648,7 @@ export default function TechRelayAdminPage() {
         round_number: Number(editingRound.round_number || 1),
         round_title: editingRound.round_title || `Round ${editingRound.round_number}`,
         round_type: editingRound.round_type || "puzzle",
-        correct_answer: editingRound.correct_answer || "",
+        correct_answer: editingRound.round_type === "mcq" ? (editingRound.correct_answer || "mcq_all") : (editingRound.correct_answer || ""),
         time_limit_seconds: Number(editingRound.time_limit_seconds ?? 0),
         content: finalContent,
         is_active: isActive,
@@ -1413,6 +1428,50 @@ export default function TechRelayAdminPage() {
               </div>
             </div>
 
+            {/* One-click conversion banner if Round 3 is not yet MCQ */}
+            {editingRound.round_number === 3 && editingRound.round_type !== "mcq" && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.15))",
+                  border: "1px solid rgba(99, 102, 241, 0.4)",
+                  borderRadius: 12,
+                  padding: "12px 16px",
+                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, color: "#a5b4fc", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>⚡</span> <span>Round 3 is set to Find Code Error</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>
+                    Want Multiple Choice Questions (MCQs) for Round 3? Click to convert instantly.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleConvertToMcq}
+                  style={{
+                    background: "linear-gradient(135deg, #6366f1, #06b6d4)",
+                    border: "none",
+                    borderRadius: 8,
+                    color: "#fff",
+                    padding: "8px 16px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 0 15px rgba(99, 102, 241, 0.4)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ⚡ Convert Round 3 to MCQs
+                </button>
+              </div>
+            )}
+
             {/* Basic Info */}
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
@@ -1430,13 +1489,27 @@ export default function TechRelayAdminPage() {
                 <select
                   className={styles.formSelect}
                   value={editingRound.round_type || "puzzle"}
-                  onChange={(e) => setEditingRound({ ...editingRound, round_type: e.target.value as any })}
+                  onChange={(e) => {
+                    const newType = e.target.value as any;
+                    let newTitle = editingRound.round_title;
+                    if (newType === "mcq" && (!newTitle || newTitle.toLowerCase().includes("error") || newTitle.toLowerCase().includes("debug"))) {
+                      newTitle = editingRound.round_number === 3 ? "Code & Logic Quiz" : "Speed Tech Quiz";
+                    }
+                    setEditingRound({ ...editingRound, round_type: newType, round_title: newTitle });
+                    if (newType === "mcq" && (!questionsList[0] || !("options" in questionsList[0]))) {
+                      const def = DEFAULT_ROUNDS.find((d) => d.round_number === (editingRound.round_number || 3))?.content as any;
+                      if (def?.questions) {
+                        setQuestionsList(JSON.parse(JSON.stringify(def.questions)));
+                        setContentJson(JSON.stringify(def, null, 2));
+                      }
+                    }
+                  }}
                 >
-                  <option value="gadget">Round 1: Identity Gadgets (Character Clues)</option>
-                  <option value="puzzle">Round 2: Solve Puzzle (Problem Statement)</option>
-                  <option value="debug">Round 3: Find Code Error (Code Snippet)</option>
-                  <option value="mcq">Round 4: Speed Tech Quiz (MCQs)</option>
-                  <option value="password">Round 5: Decode Password (Cipher)</option>
+                  <option value="gadget">Identity Gadgets (Character Clues)</option>
+                  <option value="puzzle">Problem Puzzle (Statement & Answer)</option>
+                  <option value="mcq">Multiple Choice Quiz (MCQs)</option>
+                  <option value="debug">Find Code Error (Code Snippet)</option>
+                  <option value="password">Decode Vault Password (Cipher)</option>
                 </select>
               </div>
             </div>
