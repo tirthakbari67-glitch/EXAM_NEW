@@ -106,10 +106,217 @@ def get_student_assigned_r1_index(student_id: str, relay_name: str, total_questi
     return hash_val % total_questions
 
 
+DEFAULT_ROUND_1_GADGETS_CONTENT = {
+    "title": "Identity Gadgets",
+    "description": "Character clue puzzle: deduce the tech gadget from letter clues.",
+    "questions": [
+        {
+            "id": "g1",
+            "gadget_name": "CAMERA",
+            "letters_count": 6,
+            "correct_answer": "CAMERA",
+            "clues": [
+                {"letter": "C", "clue": "I am the first letter of the volatile memory type that loses its data when power is turned off."},
+                {"letter": "A", "clue": "I am the middle vowel of the core computational unit that acts as the \"brain\" of a computer."},
+                {"letter": "M", "clue": "I am the twelfth letter of the English alphabet, or rather, the midpoint of the alphabet right before N. (Note: M is the 13th, making this a fun trick!)"},
+                {"letter": "E", "clue": "I am the repeating final letter found in both \"hardware\" and \"software\"."},
+                {"letter": "R", "clue": "I am the primary consonant that initiates \"Random Access Memory\"."},
+                {"letter": "A", "clue": "I am the vowel that sits alphabetically between Z and B... wait, no, I am the first vowel of the alphabet, ending this light-capturing device."}
+            ]
+        },
+        {
+            "id": "g2",
+            "gadget_name": "ROUTER",
+            "letters_count": 6,
+            "correct_answer": "ROUTER",
+            "clues": [
+                {"letter": "R", "clue": "I am the first letter of the architecture style based on Reduced Instruction Set Computers."},
+                {"letter": "O", "clue": "I am a binary digit’s twin in shape, representing the state of \"false\" or \"off\" in digital logic."},
+                {"letter": "U", "clue": "I am the vowel found in the exact center of the word \"DEBUGGER\"."},
+                {"letter": "T", "clue": "I am the consonant that forms the prefix for \"Terabyte\" and starts the technology known as \"TFT\" displays."},
+                {"letter": "E", "clue": "I am the second vowel in the word \"INTERFACE\"."},
+                {"letter": "R", "clue": "I am the terminating letter of the term \"Master\" in a Master-Slave network architecture."}
+            ]
+        },
+        {
+            "id": "g3",
+            "gadget_name": "MODEM",
+            "letters_count": 5,
+            "correct_answer": "MODEM",
+            "clues": [
+                {"letter": "M", "clue": "I am the Roman numeral for one thousand, and the starting letter of a standard unit for measuring mega-transfer speeds."},
+                {"letter": "O", "clue": "I am the letter shaped like a loop that represents an empty set in mathematics."},
+                {"letter": "D", "clue": "I am the hexadecimal digit that represents the decimal value 13."},
+                {"letter": "E", "clue": "I am the vowel that appears three times inside the word \"ENGINEERING\"."},
+                {"letter": "M", "clue": "I am the final letter of this device, matching my position at the very beginning of the word."}
+            ]
+        },
+        {
+            "id": "g4",
+            "gadget_name": "DRONE",
+            "letters_count": 5,
+            "correct_answer": "DRONE",
+            "clues": [
+                {"letter": "D", "clue": "I am the letter that designates a directory in command-line interfaces and represents 500 in Roman numerals."},
+                {"letter": "R", "clue": "I am the symbol used in programming to denote raw strings or read permissions."},
+                {"letter": "O", "clue": "I am the vowel that sits right between the letters N and P on a standard QWERTY keyboard."},
+                {"letter": "N", "clue": "I am the symbol often used in physics and networking to represent total node count."},
+                {"letter": "E", "clue": "I am the hexadecimal digit that represents the decimal value 14, and I close out this flying gadget."}
+            ]
+        },
+        {
+            "id": "g5",
+            "gadget_name": "TABLET",
+            "letters_count": 6,
+            "correct_answer": "TABLET",
+            "clues": [
+                {"letter": "T", "clue": "I am the data type in programming that represents truth values (True/False)."},
+                {"letter": "A", "clue": "I am the first letter of the hexadecimal sequence that comes after numbers 0 through 9."},
+                {"letter": "B", "clue": "I am the base unit of digital storage prefix, or the second letter of a standard \"byte\"."},
+                {"letter": "L", "clue": "I am the Roman numeral for 50, often found standing alone before a C."},
+                {"letter": "E", "clue": "I am the character that represents \"Exponent\" in scientific notation numbers."},
+                {"letter": "T", "clue": "I am a twin to the very first letter of this touch-screen device, closing out the word."}
+            ]
+        },
+        {
+            "id": "g6",
+            "gadget_name": "SERVER",
+            "letters_count": 6,
+            "correct_answer": "SERVER",
+            "clues": [
+                {"letter": "S", "clue": "I am the letter used in cryptography to denote a secure protocol prefix (like HTTPS)."},
+                {"letter": "E", "clue": "I am the most frequent vowel in the English language, appearing twice in this central network computer."},
+                {"letter": "R", "clue": "I am the letter that denotes \"Register\" in low-level assembly language architecture."},
+                {"letter": "V", "clue": "I am the Roman numeral for 5, and the consonant that starts the word for a virtual machine."},
+                {"letter": "E", "clue": "I am the second instance of the most common vowel in this word."},
+                {"letter": "R", "clue": "I am the concluding consonant, mirroring the letter found at the halfway mark of this word."}
+            ]
+        },
+        {
+            "id": "g7",
+            "gadget_name": "SWITCH",
+            "letters_count": 6,
+            "correct_answer": "SWITCH",
+            "clues": [
+                {"letter": "S", "clue": "I am the letter used to denote a multi-branch conditional control statement in programming (like a case statement)."},
+                {"letter": "W", "clue": "I am the letter that begins the global standard for Wide Area Networks."},
+                {"letter": "I", "clue": "I am the integer variable name traditionally used as the primary loop counter in code."},
+                {"letter": "T", "clue": "I am the letter representing \"Time\" complexity bounds in Big-O notation."},
+                {"letter": "C", "clue": "I am the programming language developed by Dennis Ritchie that inspired C++ and Java."},
+                {"letter": "H", "clue": "I am the letter that represents \"Hertz\", the unit of frequency, closing out this networking hardware."}
+            ]
+        },
+        {
+            "id": "g8",
+            "gadget_name": "WEBCAM",
+            "letters_count": 6,
+            "correct_answer": "WEBCAM",
+            "clues": [
+                {"letter": "W", "clue": "I am the triple-letter prefix that initiates almost every URL on the World Wide Web."},
+                {"letter": "E", "clue": "I am the baseline vowel of standard scientific notation exponent markers (like 1e10)."},
+                {"letter": "B", "clue": "I am the binary digit prefix that differentiates a bit from a byte."},
+                {"letter": "C", "clue": "I am the programming language tier that sits right below C++ and Python."},
+                {"letter": "A", "clue": "I am the vowel that represents the hex value for 10."},
+                {"letter": "M", "clue": "I am the metric prefix multiplier representing one-thousandth (10^{-3}), ending this video-streaming peripheral."}
+            ]
+        },
+        {
+            "id": "g9",
+            "gadget_name": "SENSOR",
+            "letters_count": 6,
+            "correct_answer": "SENSOR",
+            "clues": [
+                {"letter": "S", "clue": "I am the letter representing \"Seconds\" as the base SI unit of time."},
+                {"letter": "E", "clue": "I am the Euler's number constant (~2.718) in mathematical programming libraries."},
+                {"letter": "N", "clue": "I am the variable typically used in mathematics and algorithms to represent a dynamic total input size."},
+                {"letter": "S", "clue": "I am the twin sibling to the first letter of this environment-detecting hardware."},
+                {"letter": "O", "clue": "I am the letter/digit that represents the octal number system base offset."},
+                {"letter": "R", "clue": "I am the concluding letter of both \"Processor\" and this environmental data-gatherer."}
+            ]
+        },
+        {
+            "id": "g10",
+            "gadget_name": "PRINTER",
+            "letters_count": 7,
+            "correct_answer": "PRINTER",
+            "clues": [
+                {"letter": "P", "clue": "I am the protocol letter that stands at the front of secure web traffic (HTTPS) or packet transmission."},
+                {"letter": "R", "clue": "I am the symbol used in database management systems to represent a relational model."},
+                {"letter": "I", "clue": "I am the imaginary unit in complex mathematics (i = \\sqrt{-1})."},
+                {"letter": "N", "clue": "I am the mid-alphabet consonant that stands right between M and O."},
+                {"letter": "T", "clue": "I am the unit of data throughput often measured in transactions per second."},
+                {"letter": "E", "clue": "I am the baseline character for error exceptions in runtime environments."},
+                {"letter": "R", "clue": "I am the closing consonant of this hardcopy output machine."}
+            ]
+        },
+        {
+            "id": "g11",
+            "gadget_name": "HEADSET",
+            "letters_count": 7,
+            "correct_answer": "HEADSET",
+            "clues": [
+                {"letter": "H", "clue": "I am the first letter of the hardware part you wear over your ears, and I start the word \"Hardware\"."},
+                {"letter": "E", "clue": "I am the most common vowel in the English language, and I sit right in the middle of the word \"NET\"."},
+                {"letter": "A", "clue": "I am the first vowel of the alphabet, and I start the word \"Audio\"."},
+                {"letter": "D", "clue": "I am the letter that comes right after C, and I start the word \"Data\"."},
+                {"letter": "S", "clue": "I am the sibilant consonant that starts the word \"Sound\" and \"Speaker\"."},
+                {"letter": "E", "clue": "I am the second-to-last letter, mirroring the vowel found in the middle of this wearable audio device."},
+                {"letter": "T", "clue": "I am the consonant that crosses itself, ending both the words \"Tablet\" and \"Headset\"."}
+            ]
+        }
+    ]
+}
+
+ROUND_2_PASSWORD_MAP = {
+    # 1. Camera: 7F3A9K2D
+    "CAMERA": "7F3A9K2D",
+
+    # 2. Router: R@ut3r2025
+    "ROUTER": "R@ut3r2025",
+
+    # 3. Modem / Mini Router: 8Gk4#7m2P9
+    "MODEM": "8Gk4#7m2P9",
+    "MINI ROUTER": "8Gk4#7m2P9",
+    "MINI_ROUTER": "8Gk4#7m2P9",
+
+    # 4. Drone: 7F3A9X4D
+    "DRONE": "7F3A9X4D",
+
+    # 5. Tablet / Device: X7y8N9a5bC
+    "TABLET": "X7y8N9a5bC",
+    "DEVICE": "X7y8N9a5bC",
+
+    # 6. Server / Server Rack: K8n9C5pL2
+    "SERVER": "K8n9C5pL2",
+    "SERVER RACK": "K8n9C5pL2",
+    "SERVER_RACK": "K8n9C5pL2",
+
+    # 7. Switch / Master Switch: ACCESS24B7T
+    "SWITCH": "ACCESS24B7T",
+    "MASTER SWITCH": "ACCESS24B7T",
+    "MASTER_SWITCH": "ACCESS24B7T",
+
+    # 8. Webcam: 7X9kL2mP4
+    "WEBCAM": "7X9kL2mP4",
+
+    # 9. Sensor / Sensor Unit: SENSOR95R1P
+    "SENSOR": "SENSOR95R1P",
+    "SENSOR UNIT": "SENSOR95R1P",
+    "SENSOR_UNIT": "SENSOR95R1P",
+
+    # 10. Printer: 42BLUEK7Y1P
+    "PRINTER": "42BLUEK7Y1P",
+
+    # 11. Headset / Soundbar: PWR588F32
+    "HEADSET": "PWR588F32",
+    "SOUNDBAR": "PWR588F32",
+}
+
 DEFAULT_ROUND_2_GATE_CONTENT = {
     "title": "Password Verification Gate",
-    "instruction": "Verify your clearance by typing your exact Round 1 gadget codename to unlock Round 3.",
-    "rule": "Exact match with Round 1 Gadget Codename"
+    "instruction": "Verify your clearance by entering the security password corresponding to your Round 1 gadget to unlock Round 3.",
+    "rule": "Password matching Round 1 Gadget Codename",
+    "password_table": ROUND_2_PASSWORD_MAP
 }
 
 DEFAULT_ROUND_3_HTML_CONTENT = {
@@ -286,14 +493,48 @@ DEFAULT_ROUND_5_WORKFLOW_CONTENT = {
 
 
 def auto_upgrade_rounds_to_latest(rounds: list, db) -> None:
-    """Auto-upgrades rounds 2, 3, 4, 5 to latest specifications:
-    - Round 2: Password Verification Gate (validates strictly against Round 1 answer)
-    - Round 3: Find a Code Error (10-question debugging pool, >= 3 correct needed)
-    - Round 4: Tech Quiz (10-question MCQ pool, >= 4 correct needed)
+    """Auto-upgrades rounds 1, 2, 3, 4, 5 to latest specifications:
+    - Round 1: Identity Gadgets (11 Gadgets with Character Clues)
+    - Round 2: Password Verification Gate (validates strictly against Round 1 answer's predefined security password)
+    - Round 3: HTML Basic Practice Assessment (10 HTML MCQs, >= 3 correct needed)
+    - Round 4: Tech Quiz (10 Introductory Engineering MCQs, >= 4 correct needed)
     - Round 5: Crack Final Password (10-step master key assembly)
     """
     for r in rounds:
         r_num = r.get("round_number")
+
+        # Round 1: Identity Gadgets (11 Gadgets with Character Clues)
+        if r_num == 1:
+            r1_c = r.get("content")
+            needs_r1_upgrade = False
+            if not isinstance(r1_c, dict) or "questions" not in r1_c:
+                needs_r1_upgrade = True
+            elif len(r1_c.get("questions", [])) < 11:
+                needs_r1_upgrade = True
+            elif "volatile memory" not in json.dumps(r1_c).lower():
+                needs_r1_upgrade = True
+
+            if needs_r1_upgrade:
+                try:
+                    db.table("tech_relay_config").update({
+                        "round_title": "Identity Gadgets",
+                        "round_type": "gadget",
+                        "correct_answer": "CAMERA",
+                        "time_limit_seconds": 0,
+                        "content": json.dumps(DEFAULT_ROUND_1_GADGETS_CONTENT),
+                    }).eq("round_number", 1).execute()
+                except Exception as e:
+                    print(f"[TECH_RELAY] auto_upgrade Round 1 note: {e}")
+                r["round_title"] = "Identity Gadgets"
+                r["round_type"] = "gadget"
+                r["correct_answer"] = "CAMERA"
+                r["time_limit_seconds"] = 0
+                r["content"] = DEFAULT_ROUND_1_GADGETS_CONTENT
+            else:
+                r["round_title"] = "Identity Gadgets"
+                r["round_type"] = "gadget"
+                r["correct_answer"] = "CAMERA"
+                r["time_limit_seconds"] = 0
 
         # Round 2: Password Verification Gate
         if r_num == 2 and ("verification" not in str(r.get("round_title", "")).lower() or r.get("round_type") != "puzzle"):
@@ -317,7 +558,13 @@ def auto_upgrade_rounds_to_latest(rounds: list, db) -> None:
             r["round_type"] = "puzzle"
             r["correct_answer"] = "VERIFY_ROUND1_PASSWORD"
             r["time_limit_seconds"] = 0
-            if not isinstance(r.get("content"), dict) or "rule" not in r.get("content", {}):
+            if not isinstance(r.get("content"), dict) or "password_table" not in r.get("content", {}):
+                try:
+                    db.table("tech_relay_config").update({
+                        "content": json.dumps(DEFAULT_ROUND_2_GATE_CONTENT),
+                    }).eq("round_number", 2).execute()
+                except Exception:
+                    pass
                 r["content"] = DEFAULT_ROUND_2_GATE_CONTENT
 
         # Round 3: HTML Basic Practice Assessment (10 HTML MCQs, target 3)
@@ -585,6 +832,7 @@ async def start_relay(body: StartRelayRequest, current: dict = Depends(get_curre
             .limit(1) \
             .execute()
         if r1_cfg.data and len(r1_cfg.data) > 0:
+            auto_upgrade_rounds_to_latest(r1_cfg.data, db)
             r1_content = r1_cfg.data[0].get("content", {})
             if isinstance(r1_content, str):
                 try:
@@ -675,6 +923,7 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         raise HTTPException(status_code=404, detail="Round not found or not active")
 
     round_config = config_result.data[0]
+    auto_upgrade_rounds_to_latest([round_config], db)
     round_type = round_config["round_type"]
 
     # 2. Check student is on this round (no skipping)
@@ -802,11 +1051,25 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         if not r1_ans:
             r1_ans = "CAMERA"
 
-        # Strictly validate typed password against Round 1 answer (case-insensitive)
-        if str(answer).strip().upper() != str(r1_ans).strip().upper():
+        clean_r1 = str(r1_ans).strip().upper()
+        expected_pwd = ROUND_2_PASSWORD_MAP.get(clean_r1)
+        submitted_pwd = str(answer).strip()
+
+        # Validate password:
+        # 1. Exact match with expected security password
+        # 2. Case-insensitive match with expected security password
+        # 3. Fallback: match gadget name if entered
+        is_valid = False
+        if expected_pwd:
+            if submitted_pwd == expected_pwd or submitted_pwd.upper() == expected_pwd.upper():
+                is_valid = True
+        if not is_valid and submitted_pwd.upper() == clean_r1:
+            is_valid = True
+
+        if not is_valid:
             return {
                 "success": False,
-                "message": f"Access Denied: Typed password does not match your Round 1 Gadget Codename! Enter '{r1_ans}' exactly."
+                "message": f"Access Denied: Incorrect security password for gadget '{clean_r1}'. Please enter the exact security key."
             }
 
         existing_entry = next((r for r in rounds_completed if r.get("round") == 2), None)
@@ -818,7 +1081,7 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             "completed_at": now,
             "attempts": attempts,
             "questions_solved": 1,
-            "user_answer": str(answer).strip().upper()
+            "user_answer": submitted_pwd
         })
         meta_info["current_question_index"] = 0
         rounds_completed.append(meta_info)
@@ -839,7 +1102,7 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         return {
             "success": True,
             "round_cleared": True,
-            "message": "🔒 Access Granted! Password verified against Round 1 Gadget. Round 3 (HTML Basic Practice Assessment) Unlocked!",
+            "message": f"🔒 Access Granted! Security password verified for {clean_r1}. Round 3 (HTML Basic Practice Assessment) Unlocked!",
             "next_round": 3,
             "next_question_index": 0,
             "is_completed": False

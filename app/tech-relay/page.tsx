@@ -174,7 +174,7 @@ function PasswordGateRound({
   onSubmit: () => void;
   submitting: boolean;
 }) {
-  const displayCodename = r1Answer ? r1Answer.trim().toUpperCase() : "SMARTPHONE";
+  const displayCodename = r1Answer ? r1Answer.trim().toUpperCase() : "CAMERA";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -207,7 +207,7 @@ function PasswordGateRound({
             marginBottom: 10,
           }}
         >
-          <span>🏷️</span> ROUND 1 SOLVED IDENTITY
+          <span>🏷️</span> ROUND 1 SOLVED GADGET
         </div>
 
         <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.65)", marginBottom: 8 }}>
@@ -262,7 +262,7 @@ function PasswordGateRound({
             <span>🔐</span> Enter the Password
           </h3>
           <p style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.6)", margin: 0, lineHeight: 1.5 }}>
-            <strong style={{ color: "#38bdf8" }}>Strict Predefined Rule:</strong> Type the exact password corresponding to your Round 1 answer above to verify security clearance. Only exact matches unlock Round 3.
+            <strong style={{ color: "#38bdf8" }}>Predefined Security Gate:</strong> Enter the security password corresponding to your Round 1 Gadget (<strong style={{ color: "#34d399" }}>{displayCodename}</strong>) to verify authorization. Only exact matches unlock Round 3.
           </p>
         </div>
 
