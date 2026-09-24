@@ -429,6 +429,9 @@ function HtmlAssessmentRound({
           <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.9)", fontWeight: 600, marginTop: 4 }}>
             Must answer at least <span style={{ color: "#34d399", fontWeight: 800 }}>3 questions correctly</span> to unlock Round 4
           </div>
+          <div style={{ fontSize: 12, color: "#f87171", fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>⚠️</span> <span>Scoring less than 3 correct will trigger <strong>immediate disqualification & game over</strong>.</span>
+          </div>
         </div>
         <div
           style={{
@@ -625,6 +628,9 @@ function TechQuizRound({
           </div>
           <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.9)", fontWeight: 600, marginTop: 4 }}>
             Must answer at least <span style={{ color: "#34d399", fontWeight: 800 }}>4 questions correctly</span> to unlock the Final Round
+          </div>
+          <div style={{ fontSize: 12, color: "#f87171", fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>⚠️</span> <span>Scoring less than 4 correct will trigger <strong>immediate disqualification & game over</strong>.</span>
           </div>
         </div>
         <div
@@ -907,6 +913,24 @@ export default function TechRelayPage() {
     try {
       const result = await submitTechRelayRound(activeRound, answer, targetQIdx);
 
+      // ── Handle Immediate Disqualification / Game Over ──────────
+      if (result.disqualified || (result.is_completed && !result.success)) {
+        const updatedProgress = await fetchTechRelayProgress();
+        setProgress(
+          updatedProgress || {
+            ...progress,
+            is_completed: true,
+            disqualified: true,
+            disqualification_reason: result.message,
+            r3_score: result.r3_score ?? progress?.r3_score ?? 0,
+            r4_score: result.r4_score ?? 0,
+            final_score: result.final_score ?? ((result.r3_score ?? 0) + (result.r4_score ?? 0)),
+          }
+        );
+        setFeedback({ type: "error", message: result.message });
+        return;
+      }
+
       if (result.success) {
         setFeedback({ type: "success", message: result.message });
         setTextAnswer("");
@@ -1021,7 +1045,8 @@ export default function TechRelayPage() {
     const totalAttempts = cleanCompleted.reduce((sum: number, r: any) => sum + (r.attempts || 1), 0);
     const clearedRoundsSet = new Set(cleanCompleted.map((r: any) => r.round));
     const clearedCount = clearedRoundsSet.size;
-    const isStoppedByAdmin = Boolean(progress?.stopped_by_admin || clearedCount < 5);
+    const isDisqualified = Boolean(progress?.disqualified);
+    const isStoppedByAdmin = !isDisqualified && Boolean(progress?.stopped_by_admin || clearedCount < 5);
 
     // Score strictly from Round 3 (HTML) & Round 4 (Tech Quiz)
     let r3Score = progress?.r3_score ?? 0;
@@ -1041,20 +1066,42 @@ export default function TechRelayPage() {
 
     return (
       <div className={styles.container}>
-        <Confetti active={showConfetti && !isStoppedByAdmin} />
+        <Confetti active={showConfetti && !isStoppedByAdmin && !isDisqualified} />
         <div className={styles.header}>
           <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
             ← Dashboard
           </button>
         </div>
-        <div className={styles.completionContainer} style={{ maxWidth: 700 }}>
-          <div className={styles.trophyIcon} style={{ fontSize: isStoppedByAdmin ? 64 : 72 }}>
-            {isStoppedByAdmin ? "🛑" : "🏆"}
+        <div
+          className={styles.completionContainer}
+          style={{
+            maxWidth: 700,
+            ...(isDisqualified
+              ? {
+                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                  boxShadow: "0 0 50px rgba(239, 68, 68, 0.15)",
+                }
+              : {}),
+          }}
+        >
+          <div
+            className={styles.trophyIcon}
+            style={{ fontSize: isDisqualified ? 76 : isStoppedByAdmin ? 64 : 72 }}
+          >
+            {isDisqualified ? "🚫" : isStoppedByAdmin ? "🛑" : "🏆"}
           </div>
           <h1
             className={styles.completionTitle}
             style={
-              isStoppedByAdmin
+              isDisqualified
+                ? {
+                    background: "linear-gradient(135deg, #f87171, #ef4444, #dc2626)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }
+                : isStoppedByAdmin
                 ? {
                     background: "linear-gradient(135deg, #f87171, #ef4444, #dc2626)",
                     WebkitBackgroundClip: "text",
@@ -1063,10 +1110,20 @@ export default function TechRelayPage() {
                 : undefined
             }
           >
-            {isStoppedByAdmin ? "Exam Concluded by Administrator" : "Tech Relay Completed!"}
+            {isDisqualified
+              ? "Game Over — Disqualified"
+              : isStoppedByAdmin
+              ? "Exam Concluded by Administrator"
+              : "Tech Relay Completed!"}
           </h1>
-          <p className={styles.completionSubtitle}>
-            {isStoppedByAdmin
+          <p
+            className={styles.completionSubtitle}
+            style={isDisqualified ? { color: "#fca5a5", fontSize: 15, fontWeight: 500 } : undefined}
+          >
+            {isDisqualified
+              ? progress?.disqualification_reason ||
+                "You scored below the required passing threshold. You have been disqualified and your session has ended."
+              : isStoppedByAdmin
               ? "The administrator has officially stopped the exam session. Your result has been evaluated based on your Round 3 & Round 4 MCQ performance up to this point."
               : "Outstanding work! You have finished all rounds of the Tech Relay challenge."}
           </p>
@@ -1076,40 +1133,77 @@ export default function TechRelayPage() {
             <div
               className={styles.statItem}
               style={{
-                background: "rgba(56, 189, 248, 0.1)",
-                borderColor: "rgba(56, 189, 248, 0.3)",
+                background: isDisqualified ? "rgba(239, 68, 68, 0.1)" : "rgba(56, 189, 248, 0.1)",
+                borderColor: isDisqualified ? "rgba(239, 68, 68, 0.35)" : "rgba(56, 189, 248, 0.3)",
               }}
             >
-              <p className={styles.statValue} style={{ color: "#38bdf8" }}>
+              <p className={styles.statValue} style={{ color: isDisqualified ? "#f87171" : "#38bdf8" }}>
                 {finalScore} <span style={{ fontSize: 15, opacity: 0.6 }}>/ 20</span>
               </p>
-              <p className={styles.statLabel}>Total MCQs Correct ({totalPercentage}%)</p>
+              <p className={styles.statLabel}>
+                {isDisqualified ? "Official Final Score" : `Total MCQs Correct (${totalPercentage}%)`}
+              </p>
             </div>
 
             <div
               className={styles.statItem}
               style={{
-                background: "rgba(168, 85, 247, 0.1)",
-                borderColor: "rgba(168, 85, 247, 0.3)",
+                background:
+                  r3Score < 3 && isDisqualified ? "rgba(239, 68, 68, 0.12)" : "rgba(168, 85, 247, 0.1)",
+                borderColor:
+                  r3Score < 3 && isDisqualified ? "rgba(239, 68, 68, 0.45)" : "rgba(168, 85, 247, 0.3)",
               }}
             >
-              <p className={styles.statValue} style={{ color: "#c084fc" }}>
+              <p
+                className={styles.statValue}
+                style={{ color: r3Score < 3 && isDisqualified ? "#f87171" : "#c084fc" }}
+              >
                 {r3Score} <span style={{ fontSize: 15, opacity: 0.6 }}>/ 10</span>
               </p>
-              <p className={styles.statLabel}>Round 3 (HTML) Correct</p>
+              <p className={styles.statLabel}>
+                Round 3 {r3Score < 3 && isDisqualified ? "(Failed < 3)" : "(HTML) Correct"}
+              </p>
             </div>
 
             <div
               className={styles.statItem}
               style={{
-                background: "rgba(52, 211, 153, 0.1)",
-                borderColor: "rgba(52, 211, 153, 0.3)",
+                background:
+                  r4Score < 4 && isDisqualified && r3Score >= 3
+                    ? "rgba(239, 68, 68, 0.12)"
+                    : isDisqualified && r3Score < 3
+                    ? "rgba(255, 255, 255, 0.03)"
+                    : "rgba(52, 211, 153, 0.1)",
+                borderColor:
+                  r4Score < 4 && isDisqualified && r3Score >= 3
+                    ? "rgba(239, 68, 68, 0.45)"
+                    : isDisqualified && r3Score < 3
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(52, 211, 153, 0.3)",
               }}
             >
-              <p className={styles.statValue} style={{ color: "#34d399" }}>
-                {r4Score} <span style={{ fontSize: 15, opacity: 0.6 }}>/ 10</span>
+              <p
+                className={styles.statValue}
+                style={{
+                  color:
+                    r4Score < 4 && isDisqualified && r3Score >= 3
+                      ? "#f87171"
+                      : isDisqualified && r3Score < 3
+                      ? "rgba(255, 255, 255, 0.3)"
+                      : "#34d399",
+                }}
+              >
+                {isDisqualified && r3Score < 3 ? "—" : r4Score}{" "}
+                <span style={{ fontSize: 15, opacity: 0.6 }}>/ 10</span>
               </p>
-              <p className={styles.statLabel}>Round 4 (Quiz) Correct</p>
+              <p className={styles.statLabel}>
+                Round 4{" "}
+                {isDisqualified && r3Score < 3
+                  ? "(Locked)"
+                  : r4Score < 4 && isDisqualified
+                  ? "(Failed < 4)"
+                  : "(Quiz) Correct"}
+              </p>
             </div>
           </div>
 
@@ -1149,8 +1243,18 @@ export default function TechRelayPage() {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 12,
-                  background: r3Score >= 3 ? "rgba(168, 85, 247, 0.1)" : "rgba(255, 255, 255, 0.03)",
-                  border: r3Score >= 3 ? "1px solid rgba(168, 85, 247, 0.35)" : "1px solid rgba(255, 255, 255, 0.07)",
+                  background:
+                    r3Score >= 3
+                      ? "rgba(168, 85, 247, 0.1)"
+                      : isDisqualified
+                      ? "rgba(239, 68, 68, 0.12)"
+                      : "rgba(255, 255, 255, 0.03)",
+                  border:
+                    r3Score >= 3
+                      ? "1px solid rgba(168, 85, 247, 0.35)"
+                      : isDisqualified
+                      ? "1px solid rgba(239, 68, 68, 0.45)"
+                      : "1px solid rgba(255, 255, 255, 0.07)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1164,8 +1268,13 @@ export default function TechRelayPage() {
                       justifyContent: "center",
                       fontSize: 14,
                       fontWeight: 800,
-                      background: r3Score >= 3 ? "#c084fc" : "rgba(255, 255, 255, 0.1)",
-                      color: r3Score >= 3 ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
+                      background:
+                        r3Score >= 3
+                          ? "#c084fc"
+                          : isDisqualified
+                          ? "#ef4444"
+                          : "rgba(255, 255, 255, 0.1)",
+                      color: r3Score >= 3 || isDisqualified ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
                     }}
                   >
                     R3
@@ -1174,13 +1283,35 @@ export default function TechRelayPage() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
                       Round 3: HTML Basic Assessment
                     </div>
-                    <div style={{ fontSize: 12, color: r3Score >= 3 ? "#c084fc" : "rgba(255, 255, 255, 0.4)" }}>
-                      {r3Score >= 3 ? "✅ Passed (3+ required)" : isStoppedByAdmin ? "Incomplete at stoppage" : "Needs 3+ correct"}
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color:
+                          r3Score >= 3
+                            ? "#c084fc"
+                            : isDisqualified
+                            ? "#f87171"
+                            : "rgba(255, 255, 255, 0.4)",
+                      }}
+                    >
+                      {r3Score >= 3
+                        ? "✅ Passed (3+ required)"
+                        : isDisqualified
+                        ? "❌ Disqualified (< 3 correct required)"
+                        : isStoppedByAdmin
+                        ? "Incomplete at stoppage"
+                        : "Needs 3+ correct"}
                     </div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: r3Score >= 3 ? "#c084fc" : "#fff" }}>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: r3Score >= 3 ? "#c084fc" : isDisqualified ? "#f87171" : "#fff",
+                    }}
+                  >
                     {r3Score} <span style={{ fontSize: 13, opacity: 0.6 }}>/ 10</span>
                   </div>
                   <div style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.4)" }}>
@@ -1197,8 +1328,22 @@ export default function TechRelayPage() {
                   justifyContent: "space-between",
                   padding: "14px 16px",
                   borderRadius: 12,
-                  background: r4Score >= 4 ? "rgba(52, 211, 153, 0.1)" : "rgba(255, 255, 255, 0.03)",
-                  border: r4Score >= 4 ? "1px solid rgba(52, 211, 153, 0.35)" : "1px solid rgba(255, 255, 255, 0.07)",
+                  background:
+                    r4Score >= 4
+                      ? "rgba(52, 211, 153, 0.1)"
+                      : isDisqualified && r3Score < 3
+                      ? "rgba(255, 255, 255, 0.02)"
+                      : isDisqualified && r4Score < 4
+                      ? "rgba(239, 68, 68, 0.12)"
+                      : "rgba(255, 255, 255, 0.03)",
+                  border:
+                    r4Score >= 4
+                      ? "1px solid rgba(52, 211, 153, 0.35)"
+                      : isDisqualified && r3Score < 3
+                      ? "1px solid rgba(255, 255, 255, 0.05)"
+                      : isDisqualified && r4Score < 4
+                      ? "1px solid rgba(239, 68, 68, 0.45)"
+                      : "1px solid rgba(255, 255, 255, 0.07)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1212,8 +1357,16 @@ export default function TechRelayPage() {
                       justifyContent: "center",
                       fontSize: 14,
                       fontWeight: 800,
-                      background: r4Score >= 4 ? "#34d399" : "rgba(255, 255, 255, 0.1)",
-                      color: r4Score >= 4 ? "#0f172a" : "rgba(255, 255, 255, 0.4)",
+                      background:
+                        r4Score >= 4
+                          ? "#34d399"
+                          : isDisqualified && r3Score >= 3 && r4Score < 4
+                          ? "#ef4444"
+                          : "rgba(255, 255, 255, 0.1)",
+                      color:
+                        r4Score >= 4 || (isDisqualified && r3Score >= 3 && r4Score < 4)
+                          ? "#0f172a"
+                          : "rgba(255, 255, 255, 0.4)",
                     }}
                   >
                     R4
@@ -1222,17 +1375,51 @@ export default function TechRelayPage() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
                       Round 4: Tech Knowledge Quiz
                     </div>
-                    <div style={{ fontSize: 12, color: r4Score >= 4 ? "#34d399" : "rgba(255, 255, 255, 0.4)" }}>
-                      {r4Score >= 4 ? "✅ Passed (4+ required)" : isStoppedByAdmin ? "Incomplete at stoppage" : "Needs 4+ correct"}
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color:
+                          r4Score >= 4
+                            ? "#34d399"
+                            : isDisqualified && r3Score < 3
+                            ? "rgba(255, 255, 255, 0.3)"
+                            : isDisqualified && r4Score < 4
+                            ? "#f87171"
+                            : "rgba(255, 255, 255, 0.4)",
+                      }}
+                    >
+                      {r4Score >= 4
+                        ? "✅ Passed (4+ required)"
+                        : isDisqualified && r3Score < 3
+                        ? "🔒 Locked (Did not qualify from Round 3)"
+                        : isDisqualified && r4Score < 4
+                        ? "❌ Disqualified (< 4 correct required)"
+                        : isStoppedByAdmin
+                        ? "Incomplete at stoppage"
+                        : "Needs 4+ correct"}
                     </div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: r4Score >= 4 ? "#34d399" : "#fff" }}>
-                    {r4Score} <span style={{ fontSize: 13, opacity: 0.6 }}>/ 10</span>
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color:
+                        r4Score >= 4
+                          ? "#34d399"
+                          : isDisqualified && r3Score < 3
+                          ? "rgba(255, 255, 255, 0.3)"
+                          : isDisqualified && r4Score < 4
+                          ? "#f87171"
+                          : "#fff",
+                    }}
+                  >
+                    {isDisqualified && r3Score < 3 ? "—" : r4Score}{" "}
+                    <span style={{ fontSize: 13, opacity: 0.6 }}>/ 10</span>
                   </div>
                   <div style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.4)" }}>
-                    {r4Score * 10}% Accuracy
+                    {isDisqualified && r3Score < 3 ? "Not Attempted" : `${r4Score * 10}% Accuracy`}
                   </div>
                 </div>
               </div>
@@ -1246,15 +1433,19 @@ export default function TechRelayPage() {
                 borderRadius: 8,
                 background: "rgba(255, 255, 255, 0.03)",
                 fontSize: 11,
-                color: "rgba(255, 255, 255, 0.45)",
+                color: isDisqualified ? "#fca5a5" : "rgba(255, 255, 255, 0.45)",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
               }}
             >
-              <span>ℹ️</span>
+              <span>{isDisqualified ? "⚠️" : "ℹ️"}</span>
               <span>
-                Assessment score is determined strictly by Round 3 (HTML) & Round 4 (Tech Quiz) MCQs (Total 20). Rounds 1, 2, and 5 are qualification stages.
+                {isDisqualified
+                  ? "Session terminated: Minimum passing criteria was not met. Your final score of " +
+                    finalScore +
+                    "/20 has been officially recorded."
+                  : "Assessment score is determined strictly by Round 3 (HTML) & Round 4 (Tech Quiz) MCQs (Total 20). Rounds 1, 2, and 5 are qualification stages."}
               </span>
             </div>
           </div>
@@ -1275,7 +1466,12 @@ export default function TechRelayPage() {
             }}
           >
             <div>
-              Tournament Progress: <strong style={{ color: "#fff" }}>{clearedCount}/5 Stages Cleared</strong>
+              Tournament Status:{" "}
+              <strong style={{ color: isDisqualified ? "#f87171" : "#fff" }}>
+                {isDisqualified
+                  ? `Disqualified at Round ${r3Score < 3 ? 3 : 4}`
+                  : `${clearedCount}/5 Stages Cleared`}
+              </strong>
             </div>
             <div>
               Total Attempts: <strong style={{ color: "#fff" }}>{totalAttempts}</strong>
@@ -1285,7 +1481,17 @@ export default function TechRelayPage() {
           <button
             className={styles.submitBtn}
             onClick={() => router.push("/dashboard")}
-            style={{ width: "100%", maxWidth: 320, margin: "0 auto" }}
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              margin: "0 auto",
+              ...(isDisqualified
+                ? {
+                    background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                    boxShadow: "0 4px 15px rgba(239, 68, 68, 0.4)",
+                  }
+                : {}),
+            }}
           >
             ← Return to Dashboard
           </button>

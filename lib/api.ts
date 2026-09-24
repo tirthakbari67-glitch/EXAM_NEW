@@ -880,6 +880,8 @@ export interface TechRelayProgress {
   r1_answer?: string;
   r3_solved?: number[];
   stopped_by_admin?: boolean;
+  disqualified?: boolean;
+  disqualification_reason?: string;
   r3_score?: number;
   r4_score?: number;
   final_score?: number;
@@ -894,11 +896,15 @@ export interface TechRelaySubmitResult {
   next_question_index?: number;
   total_questions?: number;
   is_completed?: boolean;
+  disqualified?: boolean;
   r1_answer?: string;
   r3_solved?: number[];
   solved_count?: number;
   score?: number;
   total?: number;
+  r3_score?: number;
+  r4_score?: number;
+  final_score?: number;
 }
 
 export async function fetchTechRelayConfig(): Promise<TechRelayRound[]> {
@@ -980,6 +986,8 @@ export interface TechRelayParticipant {
   r4_score?: number;
   total_mcq?: number;
   stopped_by_admin?: boolean;
+  disqualified?: boolean;
+  disqualification_reason?: string;
   cleared_rounds?: number;
 }
 

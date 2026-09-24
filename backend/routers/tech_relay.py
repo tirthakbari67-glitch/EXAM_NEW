@@ -745,6 +745,8 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
             r1_answer = None
             r3_solved = []
             stopped_by_admin = False
+            disqualified = False
+            disqualification_reason = ""
 
             for item in rounds_completed:
                 if isinstance(item, dict):
@@ -756,6 +758,9 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                             r3_solved = item["r3_solved"]
                         if item.get("stopped_by_admin"):
                             stopped_by_admin = True
+                        if item.get("disqualified"):
+                            disqualified = True
+                            disqualification_reason = item.get("disqualification_reason", "")
                     else:
                         clean_completed.append(item)
                         if item.get("round") == 1 and item.get("user_answer"):
@@ -778,6 +783,8 @@ async def get_relay_progress(current: dict = Depends(get_current_student)):
                 "r1_answer": r1_answer,
                 "r3_solved": r3_solved,
                 "stopped_by_admin": stopped_by_admin,
+                "disqualified": disqualified,
+                "disqualification_reason": disqualification_reason,
                 "r3_score": r3_score,
                 "r4_score": r4_score,
                 "final_score": final_score,
@@ -1219,22 +1226,90 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
             meta_info["r3_score"] = correct_count
 
             if correct_count < 3:
-                # Save partial progress in meta_info so MCQ score is tracked even on partial attempt
+                # Immediate Disqualification / Game Over: Failed Round 3 (< 3 correct)
+                r3_score = correct_count
+                r4_score = 0
+                final_score = r3_score
+
+                existing_entry = next((r for r in rounds_completed if r.get("round") == 3), None)
+                attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+
+                rounds_completed = [r for r in rounds_completed if r.get("round") != 3]
+                rounds_completed.append({
+                    "round": 3,
+                    "completed_at": now,
+                    "attempts": attempts,
+                    "score": correct_count,
+                    "total": len(html_questions),
+                    "questions_solved": correct_count,
+                    "passed": False
+                })
+
+                meta_info["r3_score"] = r3_score
+                meta_info["r4_score"] = 0
+                meta_info["final_score"] = final_score
+                meta_info["disqualified"] = True
+                meta_info["disqualification_reason"] = f"Scored {correct_count}/10 in Round 3. Minimum 3 correct answers required to advance."
                 rounds_completed.append(meta_info)
+
                 progress_data = {
                     "student_id": student_id,
                     "relay_name": relay_name,
                     "current_round": 3,
                     "rounds_completed": json.dumps(rounds_completed),
-                    "is_completed": False
+                    "is_completed": True,
+                    "completed_at": now
                 }
                 if progress:
                     db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+                else:
+                    progress_data["started_at"] = now
+                    db.table("tech_relay_progress").insert(progress_data).execute()
+
+                # Update exam_status to disqualified
+                try:
+                    db.table("exam_status").update({
+                        "status": "disqualified",
+                        "submitted_at": now
+                    }).eq("student_id", student_id).ilike("exam_name", relay_name).execute()
+                except Exception:
+                    pass
+
+                # Upsert into exam_results for final score calculation
+                try:
+                    db.table("exam_results").upsert({
+                        "student_id": student_id,
+                        "exam_name": relay_name,
+                        "score": final_score,
+                        "total_marks": 20,
+                        "submitted_at": now,
+                        "answers": json.dumps({
+                            "type": "tech_relay",
+                            "disqualified": True,
+                            "disqualification_reason": f"Scored {correct_count}/10 in Round 3 (Minimum 3 required)",
+                            "failed_round": 3,
+                            "r3_score": r3_score,
+                            "r4_score": 0,
+                            "r3_total": len(html_questions),
+                            "r4_total": 10,
+                            "total_score": final_score,
+                            "total_mcq": 20
+                        })
+                    }).execute()
+                except Exception:
+                    pass
+
                 return {
                     "success": False,
+                    "disqualified": True,
+                    "round_cleared": False,
                     "score": correct_count,
                     "total": len(html_questions),
-                    "message": f"You scored {correct_count}/10. At least 3 correct answers are required to unlock Round 4. Check your answers and try again!"
+                    "r3_score": r3_score,
+                    "r4_score": 0,
+                    "final_score": final_score,
+                    "is_completed": True,
+                    "message": f"🚫 Disqualified: You scored {correct_count}/10 in Round 3. Minimum 3 correct answers were required to unlock Round 4. Your challenge session has ended."
                 }
 
             # Round 3 Cleared!
@@ -1390,22 +1465,89 @@ async def submit_round(body: RoundSubmission, current: dict = Depends(get_curren
         meta_info["r4_score"] = correct_count
 
         if correct_count < 4:
-            # Save partial progress in meta_info so MCQ score is tracked even on partial attempt
+            # Immediate Disqualification / Game Over: Failed Round 4 (< 4 correct)
+            r3_score = meta_info.get("r3_score", 0)
+            r4_score = correct_count
+            final_score = r3_score + r4_score
+
+            existing_entry = next((r for r in rounds_completed if r.get("round") == 4), None)
+            attempts = (existing_entry["attempts"] + 1) if existing_entry else 1
+
+            rounds_completed = [r for r in rounds_completed if r.get("round") != 4]
+            rounds_completed.append({
+                "round": 4,
+                "completed_at": now,
+                "attempts": attempts,
+                "score": correct_count,
+                "total": len(quiz_questions),
+                "questions_solved": correct_count,
+                "passed": False
+            })
+
+            meta_info["r4_score"] = r4_score
+            meta_info["final_score"] = final_score
+            meta_info["disqualified"] = True
+            meta_info["disqualification_reason"] = f"Scored {correct_count}/10 in Round 4. Minimum 4 correct answers required to advance."
             rounds_completed.append(meta_info)
+
             progress_data = {
                 "student_id": student_id,
                 "relay_name": relay_name,
                 "current_round": 4,
                 "rounds_completed": json.dumps(rounds_completed),
-                "is_completed": False
+                "is_completed": True,
+                "completed_at": now
             }
             if progress:
                 db.table("tech_relay_progress").update(progress_data).eq("id", progress["id"]).execute()
+            else:
+                progress_data["started_at"] = now
+                db.table("tech_relay_progress").insert(progress_data).execute()
+
+            # Update exam_status to disqualified
+            try:
+                db.table("exam_status").update({
+                    "status": "disqualified",
+                    "submitted_at": now
+                }).eq("student_id", student_id).ilike("exam_name", relay_name).execute()
+            except Exception:
+                pass
+
+            # Upsert into exam_results for final score calculation
+            try:
+                db.table("exam_results").upsert({
+                    "student_id": student_id,
+                    "exam_name": relay_name,
+                    "score": final_score,
+                    "total_marks": 20,
+                    "submitted_at": now,
+                    "answers": json.dumps({
+                        "type": "tech_relay",
+                        "disqualified": True,
+                        "disqualification_reason": f"Scored {correct_count}/10 in Round 4 (Minimum 4 required)",
+                        "failed_round": 4,
+                        "r3_score": r3_score,
+                        "r4_score": r4_score,
+                        "r3_total": 10,
+                        "r4_total": len(quiz_questions),
+                        "total_score": final_score,
+                        "total_mcq": 20
+                    })
+                }).execute()
+            except Exception:
+                pass
+
             return {
                 "success": False,
+                "disqualified": True,
+                "round_cleared": False,
                 "score": correct_count,
                 "total": len(quiz_questions),
-                "message": f"You scored {correct_count}/10. Minimum 4 correct answers required to unlock Round 5. Check your answers and try again!"
+                "r3_score": r3_score,
+                "r4_score": r4_score,
+                "final_score": final_score,
+                "is_completed": True,
+                "message": f"🚫 Disqualified: You scored {correct_count}/10 in Round 4. Minimum 4 correct answers were required to unlock Round 5. Your challenge session has ended."
             }
 
         existing_entry = next((r for r in rounds_completed if r.get("round") == 4), None)
