@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 
@@ -258,7 +258,7 @@ async def login(request: LoginRequest):
 # ══════════════════════════════════════════════════════════════════
 
 @router.post("/send-signup-otp")
-async def send_signup_otp(request: SendSignupOtpRequest):
+async def send_signup_otp(request: SendSignupOtpRequest, background_tasks: BackgroundTasks):
     """
     Step 1 for Sign-Up:
     Validates USN and Email uniqueness, generates 6-digit OTP, dispatches email.
@@ -297,14 +297,14 @@ async def send_signup_otp(request: SendSignupOtpRequest):
     except Exception as e:
         print(f"[AUTH] Email existence check note: {e}")
 
-    # Send OTP
-    res = await send_otp(to_email=email, purpose="signup", name=name)
+    # Send OTP via background task
+    background_tasks.add_task(send_otp, to_email=email, purpose="signup", name=name)
 
     return {
         "success": True,
         "message": f"Verification code sent to {email}",
         "email": email,
-        "expires_in_seconds": res.get("expires_in_seconds", 600),
+        "expires_in_seconds": settings.otp_expire_minutes * 60,
     }
 
 
@@ -368,7 +368,7 @@ async def verify_signup_otp(request: VerifySignupOtpRequest):
 
 
 @router.post("/send-login-otp")
-async def send_login_otp(request: SendLoginOtpRequest):
+async def send_login_otp(request: SendLoginOtpRequest, background_tasks: BackgroundTasks):
     """
     Step 1 for Login (Option A):
     Verifies USN + Password first. If valid, sends 6-digit OTP to student's registered email.
@@ -413,8 +413,8 @@ async def send_login_otp(request: SendLoginOtpRequest):
             "message": "No email address linked to your account. Please update profile or use direct login."
         }
 
-    # Dispatch OTP
-    res = await send_otp(to_email=student_email, purpose="login", name=student.get("name", "Student"))
+    # Dispatch OTP via background task
+    background_tasks.add_task(send_otp, to_email=student_email, purpose="login", name=student.get("name", "Student"))
     masked = mask_email(student_email)
 
     return {
@@ -422,7 +422,7 @@ async def send_login_otp(request: SendLoginOtpRequest):
         "email_required": False,
         "masked_email": masked,
         "message": f"Verification code sent to {masked}",
-        "expires_in_seconds": res.get("expires_in_seconds", 600)
+        "expires_in_seconds": settings.otp_expire_minutes * 60
     }
 
 

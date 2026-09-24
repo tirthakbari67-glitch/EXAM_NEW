@@ -743,6 +743,8 @@ function getStoredStudent(): StudentInfo {
 
 export default function TechRelayPage() {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
   const [studentInfo, setStudentInfo] = useState<StudentInfo>(() => getStoredStudent());
   const [rounds, setRounds] = useState<TechRelayRound[]>([]);
   const [progress, setProgress] = useState<TechRelayProgress | null>(null);
@@ -782,6 +784,7 @@ export default function TechRelayPage() {
 
   // Repeating Name / USN Security Watermark Style in Background
   const watermarkStyle = useMemo(() => {
+    if (!isMounted) return {};
     const studentUsn = (studentInfo.usn || "CANDIDATE").toUpperCase();
     const studentName = (studentInfo.name || "STUDENT").toUpperCase();
     const watermarkText = `USN: ${studentUsn} • ${studentName}`;
