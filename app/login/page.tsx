@@ -254,7 +254,7 @@ export default function LoginPage() {
         if (res.success) {
           setOtpEmail(email.trim().toLowerCase());
           setStep("otp");
-          setResendCooldown(60);
+          setResendCooldown(30);
           setOtp("");
         } else {
           setError(res.message || "Failed to send verification code.");
@@ -266,7 +266,7 @@ export default function LoginPage() {
         if (res.success) {
           setOtpEmail(res.masked_email || "your registered email");
           setStep("otp");
-          setResendCooldown(60);
+          setResendCooldown(30);
           setOtp("");
         } else if (res.email_required) {
           // Fallback direct login for legacy accounts with no email
@@ -333,7 +333,7 @@ export default function LoginPage() {
       } else {
         await sendLoginOtp(usn.trim().toUpperCase(), password);
       }
-      setResendCooldown(60);
+      setResendCooldown(30);
     } catch (err: any) {
       setError(err.message || "Failed to resend code.");
     } finally {

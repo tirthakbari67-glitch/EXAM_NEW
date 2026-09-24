@@ -2,8 +2,10 @@ import smtplib
 import ssl
 import secrets
 import asyncio
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 
@@ -86,8 +88,10 @@ def _build_html_email(otp: str, purpose_text: str, name: str) -> str:
 </html>"""
 
 
-def _send_smtp_sync(to_email: str, subject: str, html_body: str) -> bool:
-    """Synchronous SMTP mail delivery with error handling."""
+def _send_smtp_sync(to_email: str, subject: str, html_body: str, plain_body: Optional[str] = None) -> bool:
+    """
+    High-reliability SMTP mail delivery with dual-port failover (465 SSL and 587 STARTTLS) and retries.
+    """
     smtp_user = settings.smtp_user.strip()
     raw_pass = (getattr(settings, "smtp_password", "") or getattr(settings, "smtp_pass", "") or "").strip()
     # Google App Passwords have 16 characters often formatted with spaces (e.g. "xxxx xxxx xxxx xxxx")
@@ -98,40 +102,68 @@ def _send_smtp_sync(to_email: str, subject: str, html_body: str) -> bool:
         smtp_host = "smtp.gmail.com"
 
     if not smtp_host or not smtp_user or not smtp_pass:
+        print("[EMAIL_SERVICE] Incomplete SMTP credentials. Email dispatch skipped.")
         return False
 
-    msg = MIMEMultipart("alternative")
     sender_email = settings.smtp_from_email.strip() or smtp_user
     sender_name = settings.smtp_from_name or "Campus Nexus"
+
+    # Build RFC-compliant multi-part email
+    msg = MIMEMultipart("alternative")
     msg["From"] = f"{sender_name} <{sender_email}>"
     msg["To"] = to_email
     msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=smtp_host if "." in smtp_host else "campusnexus.edu")
+    msg["X-Priority"] = "1"
+    msg["Importance"] = "high"
+    msg["Auto-Submitted"] = "auto-generated"
 
-    part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(part)
+    if plain_body:
+        msg.attach(MIMEText(plain_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    msg_str = msg.as_string()
 
-    try:
-        if settings.smtp_port == 465:
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_host, settings.smtp_port, context=context, timeout=12) as server:
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(sender_email, [to_email], msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_host, settings.smtp_port, timeout=12) as server:
-                if settings.smtp_use_tls:
-                    server.starttls(context=ssl.create_default_context())
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(sender_email, [to_email], msg.as_string())
-        print(f"[EMAIL_SERVICE] Successfully dispatched email to {to_email} via {smtp_host}")
-        return True
-    except Exception as e:
-        print(f"[EMAIL_SERVICE] SMTP send error to {to_email}: {e}")
-        return False
+    # Determine primary and fallback ports
+    # Direct SSL (465) is generally faster and less susceptible to ISP STARTTLS drops,
+    # but we support both 465 and 587 seamlessly.
+    configured_port = int(settings.smtp_port) if settings.smtp_port else 465
+    ports_to_try = [configured_port]
+    if configured_port == 465:
+        ports_to_try.append(587)
+    else:
+        ports_to_try.append(465)
+
+    for port in ports_to_try:
+        for attempt in range(1, 3):
+            try:
+                if port == 465:
+                    context = ssl.create_default_context()
+                    with smtplib.SMTP_SSL(smtp_host, 465, context=context, timeout=22) as server:
+                        server.login(smtp_user, smtp_pass)
+                        server.sendmail(sender_email, [to_email], msg_str)
+                else:
+                    with smtplib.SMTP(smtp_host, port, timeout=22) as server:
+                        server.ehlo()
+                        if settings.smtp_use_tls:
+                            server.starttls(context=ssl.create_default_context())
+                            server.ehlo()
+                        server.login(smtp_user, smtp_pass)
+                        server.sendmail(sender_email, [to_email], msg_str)
+
+                print(f"[EMAIL_SERVICE] Successfully dispatched email to {to_email} via {smtp_host}:{port} (attempt {attempt})")
+                return True
+            except Exception as e:
+                print(f"[EMAIL_SERVICE] SMTP dispatch attempt {attempt} failed on {smtp_host}:{port}: {e}")
+                time.sleep(0.5)
+
+    print(f"[EMAIL_SERVICE] All SMTP delivery attempts failed for {to_email}")
+    return False
 
 
 async def send_otp(to_email: str, purpose: str = "signup", name: str = "Student") -> Dict[str, Any]:
     """
-    Generates OTP, stores it in Supabase (with in-memory fallback), and dispatches email.
+    Generates OTP, stores it in Supabase (with in-memory fallback), and dispatches email with automatic retry.
     """
     to_email_clean = to_email.strip().lower()
     otp = generate_otp()
@@ -166,15 +198,21 @@ async def send_otp(to_email: str, purpose: str = "signup", name: str = "Student"
     purpose_label = "account registration" if purpose == "signup" else "sign-in verification"
     subject = f"{otp} is your Campus Nexus verification code"
     html_content = _build_html_email(otp, purpose_label, name)
+    plain_content = f"Hello {name},\n\nYour Campus Nexus verification code is: {otp}\n\nThis code expires in {settings.otp_expire_minutes} minutes.\nIf you did not request this, please ignore this message."
 
-    # 4. Dispatch email asynchronously
-    sent = await asyncio.to_thread(_send_smtp_sync, to_email_clean, subject, html_content)
+    # 4. Dispatch email asynchronously with retry
+    sent = await asyncio.to_thread(_send_smtp_sync, to_email_clean, subject, html_content, plain_content)
+
+    if not sent:
+        print(f"[EMAIL_SERVICE] First cycle unconfirmed for {to_email_clean}. Running immediate fallback...")
+        await asyncio.sleep(0.8)
+        sent = await asyncio.to_thread(_send_smtp_sync, to_email_clean, subject, html_content, plain_content)
 
     # Always log to server console for testing/debugging
     print(f"\n=========================================================")
     print(f"  [CAMPUS NEXUS OTP] To: {to_email_clean}")
     print(f"  Purpose: {purpose} | CODE: >>> {otp} <<<")
-    print(f"  Delivery: {'Delivered via SMTP' if sent else 'Fallback Console Mode (SMTP not configured)'}")
+    print(f"  Delivery: {'Delivered via SMTP' if sent else 'Fallback Console Mode (SMTP error or unconfigured)'}")
     print(f"=========================================================\n")
 
     return {
