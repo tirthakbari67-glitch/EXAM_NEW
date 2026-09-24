@@ -1,7 +1,7 @@
 /* react-doctor-disable label-has-associated-control, no-inline-exhaustive-style, rendering-hydration-mismatch-time, no-tiny-text, design-no-bold-heading, rerender-state-only-in-handlers, no-array-index-as-key, react-compiler-destructure-method, click-events-have-key-events, no-static-element-interactions, prefer-useReducer, no-large-animated-blur, no-giant-component, nextjs-no-img-element, no-transition-all, use-lazy-motion, rerender-functional-setstate, no-cascading-set-state, design-no-three-period-ellipsis, js-combine-iterations, client-localstorage-no-version, no-z-index-9999, js-cache-storage, nextjs-no-client-side-redirect, no-wide-letter-spacing, react-doctor/label-has-associated-control, react-doctor/no-inline-exhaustive-style, react-doctor/rendering-hydration-mismatch-time, react-doctor/no-tiny-text, react-doctor/design-no-bold-heading, react-doctor/rerender-state-only-in-handlers, react-doctor/no-array-index-as-key, react-doctor/react-compiler-destructure-method, react-doctor/click-events-have-key-events, react-doctor/no-static-element-interactions, react-doctor/prefer-useReducer, react-doctor/no-large-animated-blur, react-doctor/no-giant-component, react-doctor/nextjs-no-img-element, react-doctor/no-transition-all, react-doctor/use-lazy-motion, react-doctor/rerender-functional-setstate, react-doctor/no-cascading-set-state, react-doctor/design-no-three-period-ellipsis, react-doctor/js-combine-iterations, react-doctor/client-localstorage-no-version, react-doctor/no-z-index-9999, react-doctor/js-cache-storage, react-doctor/nextjs-no-client-side-redirect, react-doctor/no-wide-letter-spacing */
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AntiCheat from "@/components/AntiCheat";
 import { useFullscreen } from "@/hooks/useFullscreen";
@@ -698,12 +698,52 @@ function TechQuizRound({
   );
 }
 
+interface StudentInfo {
+  usn: string;
+  name: string;
+}
+
+function getStoredStudent(): StudentInfo {
+  let usn = "";
+  let name = "";
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("exam_student") || sessionStorage.getItem("exam_student");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.usn) usn = String(parsed.usn);
+        if (parsed?.name) name = String(parsed.name);
+      }
+    } catch {
+      // ignore
+    }
+
+    if (!usn || !name) {
+      try {
+        const token = localStorage.getItem("exam_token");
+        if (token && token.includes(".")) {
+          const parts = token.split(".");
+          if (parts[1]) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (!usn && payload?.usn) usn = String(payload.usn);
+            if (!name && payload?.name) name = String(payload.name);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return { usn: usn.trim(), name: name.trim() };
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════
 
 export default function TechRelayPage() {
   const router = useRouter();
+  const [studentInfo, setStudentInfo] = useState<StudentInfo>(() => getStoredStudent());
   const [rounds, setRounds] = useState<TechRelayRound[]>([]);
   const [progress, setProgress] = useState<TechRelayProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -739,6 +779,27 @@ export default function TechRelayPage() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Repeating Name / USN Security Watermark Style in Background
+  const watermarkStyle = useMemo(() => {
+    const studentUsn = (studentInfo.usn || "CANDIDATE").toUpperCase();
+    const studentName = (studentInfo.name || "STUDENT").toUpperCase();
+    const watermarkText = `USN: ${studentUsn} • ${studentName}`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="290" viewBox="0 0 480 290">
+      <text x="240" y="145" fill="rgba(255,255,255,0.085)" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="900" text-anchor="middle" transform="rotate(-23 240 145)">${watermarkText}</text>
+    </svg>`;
+    return {
+      backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`,
+      position: "fixed" as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      pointerEvents: "none" as const,
+      userSelect: "none" as const,
+      zIndex: 1,
+    };
+  }, [studentInfo]);
 
   const handleAutoSubmit = useCallback(() => {
     setIsTerminated(true);
@@ -786,6 +847,10 @@ export default function TechRelayPage() {
   // ── Load Data ────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
+      const s = getStoredStudent();
+      if (s.usn || s.name) {
+        setStudentInfo(s);
+      }
       const [roundsData, progressData] = await Promise.all([
         fetchTechRelayConfig(),
         fetchTechRelayProgress(),
@@ -992,6 +1057,7 @@ export default function TechRelayPage() {
   if (loading) {
     return (
       <div className={styles.container}>
+        <div style={watermarkStyle} aria-hidden="true" />
         <div className={styles.loadingContainer}>
           <div className={styles.spinner} />
           <p className={styles.loadingText}>Loading Tech Relay...</p>
@@ -1003,6 +1069,7 @@ export default function TechRelayPage() {
   if (error) {
     return (
       <div className={styles.container}>
+        <div style={watermarkStyle} aria-hidden="true" />
         <div className={styles.header}>
           <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
             ← Back
@@ -1020,6 +1087,7 @@ export default function TechRelayPage() {
   if (rounds.length === 0) {
     return (
       <div className={styles.container}>
+        <div style={watermarkStyle} aria-hidden="true" />
         <div className={styles.header}>
           <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
             ← Back
@@ -1066,6 +1134,7 @@ export default function TechRelayPage() {
 
     return (
       <div className={styles.container}>
+        <div style={watermarkStyle} aria-hidden="true" />
         <Confetti active={showConfetti && !isStoppedByAdmin && !isDisqualified} />
         <div className={styles.header}>
           <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
@@ -1127,6 +1196,29 @@ export default function TechRelayPage() {
               ? "The administrator has officially stopped the exam session. Your result has been evaluated based on your Round 3 & Round 4 MCQ performance up to this point."
               : "Outstanding work! You have finished all rounds of the Tech Relay challenge."}
           </p>
+
+          {/* Candidate Identity Chip in Results */}
+          {(studentInfo.name || studentInfo.usn) && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                color: "#fff",
+                margin: "0 auto 18px",
+              }}
+            >
+              <span>👤 Candidate: <strong>{studentInfo.name || "Student"}</strong></span>
+              <span style={{ opacity: 0.35 }}>|</span>
+              <span style={{ color: "#38bdf8", fontWeight: 800 }}>USN: {studentInfo.usn || "N/A"}</span>
+            </div>
+          )}
 
           {/* Key Metrics: Separate Round 3 & Round 4 + Total */}
           <div className={styles.statsGrid} style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
@@ -1510,6 +1602,7 @@ export default function TechRelayPage() {
   if (!hasStarted) {
     return (
       <div className={styles.container}>
+        <div style={watermarkStyle} aria-hidden="true" />
         <div className={styles.header}>
           <button className={styles.backButton} onClick={() => router.push("/dashboard")}>
             ← Dashboard
@@ -1522,6 +1615,30 @@ export default function TechRelayPage() {
           <p className={styles.startGateSubtitle}>
             Enter the tournament access code to unlock Round 1 and begin the challenge.
           </p>
+
+          {/* Candidate Identity Chip in Start Gate */}
+          {(studentInfo.name || studentInfo.usn) && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                background: "rgba(56, 189, 248, 0.1)",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                color: "#e0f2fe",
+                marginBottom: 16,
+              }}
+            >
+              <span>👤</span>
+              <span>{studentInfo.name || "Student"}</span>
+              <span style={{ opacity: 0.35 }}>|</span>
+              <span style={{ color: "#38bdf8", fontWeight: 800 }}>USN: {studentInfo.usn}</span>
+            </div>
+          )}
 
           <form
             onSubmit={(e) => {
@@ -1574,6 +1691,7 @@ export default function TechRelayPage() {
 
   return (
     <div className={styles.container}>
+      <div style={watermarkStyle} aria-hidden="true" />
       <AntiCheat
         isSubmitted={isCompleted || isTerminated}
         examName="Tech Relay"
@@ -1592,8 +1710,32 @@ export default function TechRelayPage() {
         <h1 className={styles.title}>Tech Relay</h1>
         <p className={styles.subtitle}>Complete all 5 rounds to conquer the challenge</p>
 
-        {/* Anti-Cheat Telemetry Badge */}
+        {/* Anti-Cheat Telemetry Badge & Student Badge */}
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+          {/* Candidate Info Badge */}
+          {(studentInfo.name || studentInfo.usn) && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "5px 14px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 700,
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                color: "rgba(255, 255, 255, 0.9)",
+                letterSpacing: "0.3px",
+              }}
+            >
+              <span>👤</span>
+              <span>{studentInfo.name || "Student"}</span>
+              <span style={{ opacity: 0.35 }}>|</span>
+              <span style={{ color: "#38bdf8", fontWeight: 800 }}>USN: {studentInfo.usn || "N/A"}</span>
+            </div>
+          )}
+
           <div style={{
             display: "inline-flex",
             alignItems: "center",
