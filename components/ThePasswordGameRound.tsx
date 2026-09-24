@@ -324,7 +324,6 @@ export default function ThePasswordGameRound({
   const [showPassword, setShowPassword] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
   const [maxUnlockedRule, setMaxUnlockedRule] = useState<number>(1);
-  const [showAllRules, setShowAllRules] = useState<boolean>(false);
 
   // Sync with external state if passed
   const password = externalSetAnswer ? externalAnswer : internalPassword;
@@ -1124,10 +1123,8 @@ export default function ThePasswordGameRound({
     },
   ];
 
-  // Visible rules: progressive or show all
-  const visibleRules = showAllRules
-    ? allRulesList
-    : allRulesList.filter((r) => r.ruleNumber <= maxUnlockedRule);
+  // Visible rules: progressive reveal only
+  const visibleRules = allRulesList.filter((r) => r.ruleNumber <= maxUnlockedRule);
 
   // Render order: reverse order as in Password Game (latest unlocked at top)
   const displayRules = [...visibleRules].reverse();
@@ -1190,7 +1187,7 @@ export default function ThePasswordGameRound({
             </p>
           </div>
 
-          {/* Progress Pill & Toggle */}
+          {/* Progress Pill */}
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <div
               className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-mono flex items-center gap-1.5 transition-colors ${
@@ -1202,15 +1199,6 @@ export default function ThePasswordGameRound({
               {isAllSatisfied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-indigo-400" />}
               <span>{totalSatisfied} / 20 Rules</span>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAllRules(!showAllRules)}
-              className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition-colors cursor-pointer"
-              title={showAllRules ? "Switch to progressive reveal" : "Reveal all 20 rules"}
-            >
-              {showAllRules ? "Progressive" : "View All (20)"}
-            </button>
           </div>
         </div>
 
