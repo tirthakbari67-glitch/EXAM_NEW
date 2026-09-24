@@ -142,7 +142,7 @@ function GadgetRound({ round, subIndex, answer, setAnswer }: SubQuestionProps) {
       <div className={styles.cluesGrid}>
         {clues.map((c, i) => (
           <div key={`clue-${round.round_number}-${subIndex}-${i}`} className={styles.clueCard}>
-            <div className={styles.clueLetter}>{c.letter}</div>
+            <div className={styles.clueLetter}>{c.letter || `#${i + 1}`}</div>
             <div className={styles.clueHint}>{c.clue}</div>
           </div>
         ))}

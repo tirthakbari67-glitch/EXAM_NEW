@@ -2073,34 +2073,27 @@ export default function TechRelayAdminPage() {
                               style={{ padding: "2px 8px", fontSize: 11 }}
                               onClick={() => {
                                 const currentClues = q.clues || [];
-                                handleUpdateQuestion(qIdx, "clues", [...currentClues, { letter: "", clue: "" }]);
+                                handleUpdateQuestion(qIdx, "clues", [...currentClues, { clue: "" }]);
                               }}
                             >
-                              + Add Letter Clue
+                              + Add Clue
                             </button>
                           </div>
 
                           {(q.clues || []).map((clue: any, cIdx: number) => (
                             <div key={cIdx} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                              <input
-                                style={{ width: 60 }}
-                                className={styles.formInput}
-                                placeholder="Letter"
-                                value={clue.letter || ""}
-                                maxLength={2}
-                                onChange={(e) => {
-                                  const cluesCopy = [...(q.clues || [])];
-                                  cluesCopy[cIdx] = { ...cluesCopy[cIdx], letter: e.target.value.toUpperCase() };
-                                  handleUpdateQuestion(qIdx, "clues", cluesCopy);
-                                }}
-                              />
+                              <span style={{ minWidth: 26, fontSize: 12, fontWeight: 700, color: "rgba(255, 255, 255, 0.45)", textAlign: "center" }}>
+                                #{cIdx + 1}
+                              </span>
                               <input
                                 className={styles.formInput}
+                                style={{ flex: 1 }}
                                 placeholder="Clue or description line..."
-                                value={clue.clue || ""}
+                                value={typeof clue === "object" ? (clue.clue ?? "") : (clue ?? "")}
                                 onChange={(e) => {
                                   const cluesCopy = [...(q.clues || [])];
-                                  cluesCopy[cIdx] = { ...cluesCopy[cIdx], clue: e.target.value };
+                                  const existing = typeof cluesCopy[cIdx] === "object" ? cluesCopy[cIdx] : {};
+                                  cluesCopy[cIdx] = { ...existing, clue: e.target.value };
                                   handleUpdateQuestion(qIdx, "clues", cluesCopy);
                                 }}
                               />
